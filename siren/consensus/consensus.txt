@@ -1,0 +1,5 @@
+@startuml
+title Consensus
+state "test" as test {
+}
+@enduml

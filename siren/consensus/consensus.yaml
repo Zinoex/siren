@@ -1,0 +1,4 @@
+statechart:
+  name: Consensus
+  root state:
+    name: test
