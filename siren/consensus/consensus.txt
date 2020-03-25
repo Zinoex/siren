@@ -1,5 +1,35 @@
 @startuml
-title Consensus
-state "test" as test {
+title Coordination
+state "Node" as Node {
+  [*] --> Starting
+  state "DefectLight" as DefectLight {
+  }
+  state "HealthyLight" as HealthyLight {
+    HealthyLight --> DefectLight : dead_light / print('Send "dead" signal')
+    state "Consensus" as Consensus {
+      state "CalcValue" as CalcValue {
+      }
+      state "AwaitResult" as AwaitResult {
+      }
+      state "SendProp" as SendProp {
+      }
+    }
+    --
+    state "IntersectionHealth" as IntersectionHealth {
+      state "Stopped" as Stopped {
+      }
+      state "DegradedSignalGroup" as DegradedSignalGroup {
+        DegradedSignalGroup --> Stopped
+      }
+      state "HealthyIntersection" as HealthyIntersection {
+        HealthyIntersection --> DegradedSignalGroup : dead_signal
+        HealthyIntersection --> Stopped
+      }
+    }
+  }
+  state "Starting" as Starting {
+    Starting --> HealthyLight : good_health / print('join network')
+    Starting --> DefectLight : [after(3)]
+  }
 }
 @enduml

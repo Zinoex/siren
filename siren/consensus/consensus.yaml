@@ -1,4 +1,41 @@
+# Underlying assumptions:
+# - Synchronous communication
+# - Authenticated communication channels
+# - Signed communication
+
 statechart:
-  name: Consensus
+  name: Coordination
   root state:
-    name: test
+    name: Node
+    initial: Starting
+    states:
+      - name: Starting
+        transitions:
+          - target: HealthyLight
+            event: good_health
+            action: print('join network')
+          - target: DefectLight
+            guard: after(3) # If no 'good_health' message was received within 3 seconds, assume that a light is dead
+      - name: HealthyLight
+        transitions:
+          - target: DefectLight
+            event: dead_light
+            action: print('Send "dead" signal')
+        parallel states:
+          - name: IntersectionHealth
+            states:
+              - name: HealthyIntersection
+                transitions:
+                  - target: DegradedSignalGroup
+                    event: dead_signal
+                  - target: Stopped
+              - name: DegradedSignalGroup
+                transitions:
+                  - target: Stopped
+              - name: Stopped
+          - name: Consensus
+            states:
+              - name: SendProp
+              - name: AwaitResult
+              - name: CalcValue
+      - name: DefectLight
