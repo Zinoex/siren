@@ -4,7 +4,7 @@
 
 # Usage: ./generate_viz.sh [-p] [file_name]
 # - p: run PlantUML on the generated file
-# - file_name: name of the PlantUML file (excluding file extension). Default: consensus.
+# - file_name: name of the PlantUML file (excluding file extension). Default: coordination.
 
 while getopts "p" opt; do
   case $opt in
@@ -15,9 +15,9 @@ while getopts "p" opt; do
   shift $((OPTIND -1))
 done
 
-file_name=${1:-consensus}
+file_name=${1:-coordination}
 
-sismic-plantuml consensus.yaml > "$file_name.txt"
+sismic-plantuml --show-state-contracts --show-preamble coordination.yaml > "$file_name.txt"
 
 if [ $plantuml ]; then
   plantuml "$file_name.txt";

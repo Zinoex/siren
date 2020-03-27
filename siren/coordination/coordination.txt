@@ -1,0 +1,66 @@
+@startuml
+title Coordination
+note top of Node
+  ngi = 1  # number of signal groups at intersection
+  ag = set()  # active signal groups
+  as = set()  # active signals
+  r = 0  # synchronization round
+end note
+state "Node" as Node {
+  state "TimeSync" as TimeSync {
+  }
+  --
+  state "LightControl" as LightControl {
+  }
+  --
+  state "SignalHealth" as SignalHealth {
+    [*] --> HealthyLights
+    state "BrokenLights" as BrokenLights {
+      BrokenLights : **entry** / send('broken_signal', group=group_id, signal=signal_id)
+    }
+    state "HealthyLights" as HealthyLights {
+      HealthyLights : **entry** / send('join_signal', group=group_id, signal=signal_id)
+      HealthyLights --> BrokenLights : dead_light [event.signal == signal_id]
+    }
+  }
+  --
+  state "SignalGroupHealth" as SignalGroupHealth {
+    [*] --> StartGroupMonitoring
+    state "DeadGroup" as DeadGroup {
+      DeadGroup : **entry** / send('dead_group', group=group_id)
+      DeadGroup :
+      DeadGroup : **inv:** len(as) == 0
+      DeadGroup --> HealthyGroup : join_signal / as.add(event.signal)
+    }
+    state "HealthyGroup" as HealthyGroup {
+      HealthyGroup : **entry** / send('group_alive', group=group_id)
+      HealthyGroup :
+      HealthyGroup : **inv:** len(as) > 0
+      HealthyGroup --> HealthyGroup : broken_signal [len(as) > 1] / as.discard(event.signal)
+      HealthyGroup --> HealthyGroup : join_signal / as.add(event.signal)
+      HealthyGroup --> DeadGroup : broken_signal [len(as) == 1]
+    }
+    state "StartGroupMonitoring" as StartGroupMonitoring {
+      StartGroupMonitoring --> HealthyGroup : join_signal [event.signal == signal_id] / as.add(signal_id)
+    }
+  }
+  --
+  state "IntersectionHealth" as IntersectionHealth {
+    [*] --> StartIntersectionMonitoring
+    state "Stopped" as Stopped {
+      Stopped : **inv:** len(ag) < ngi
+      Stopped : **inv:** len(ag) >= 0
+      Stopped --> Stopped : dead_group [len(ag) > 0] / ag.discard(event.group)
+      Stopped --> Running : group_alive [len(ag) + 1 = ngi] / ag.add(event.group)
+      Stopped --> Stopped : group_alive [len(ag) + 1 < ngi] / ag.add(event.group)
+    }
+    state "Running" as Running {
+      Running : **inv:** len(ag) == ngi
+      Running --> Stopped : dead_group / ag.discard(event.group)
+    }
+    state "StartIntersectionMonitoring" as StartIntersectionMonitoring {
+      StartIntersectionMonitoring --> Running : group_alive [event.group == group_id] / ag.add(group_id)
+    }
+  }
+}
+@enduml
