@@ -1,16 +1,29 @@
 @startuml
 title Coordination
 note top of Node
-  ngi = 1  # number of signal groups at intersection
   ag = set()  # active signal groups
   as = set()  # active signals
-  r = 0  # synchronization round
+  r = {signal_id: (0, None, None)}  # synchronization dict
+  color = 'red'
 end note
 state "Node" as Node {
-  state "TimeSync" as TimeSync {
+  state "Synchronization" as Synchronization {
   }
   --
   state "LightControl" as LightControl {
+    [*] --> LightHistory
+    state "On" as On {
+      On : **entry** / send('light_on', color=color)
+      On --> Off : broken_signal [event.signal = signal_id]
+      On --> Off : [active('Stopped')]
+    }
+    state "Off" as Off {
+      Off : **entry** / send('light_off'); color == 'red'
+      Off :
+      Off : **inv:** color == 'red'
+    }
+    state "H" as LightHistory {
+    }
   }
   --
   state "SignalHealth" as SignalHealth {
@@ -36,6 +49,7 @@ state "Node" as Node {
       HealthyGroup : **entry** / send('group_alive', group=group_id)
       HealthyGroup :
       HealthyGroup : **inv:** len(as) > 0
+      HealthyGroup : **inv:** signal_id in as
       HealthyGroup --> HealthyGroup : broken_signal [len(as) > 1] / as.discard(event.signal)
       HealthyGroup --> HealthyGroup : join_signal / as.add(event.signal)
       HealthyGroup --> DeadGroup : broken_signal [len(as) == 1]
@@ -56,10 +70,12 @@ state "Node" as Node {
     }
     state "Running" as Running {
       Running : **inv:** len(ag) == ngi
+      Running : **inv:** group_id in ag
       Running --> Stopped : dead_group / ag.discard(event.group)
     }
     state "StartIntersectionMonitoring" as StartIntersectionMonitoring {
-      StartIntersectionMonitoring --> Running : group_alive [event.group == group_id] / ag.add(group_id)
+      StartIntersectionMonitoring --> Running : group_alive [event.group == group_id and len(ag) + 1 == ngi] / ag.add(group_id)
+      StartIntersectionMonitoring --> Stopped : group_alive [event.group == group_id and len(ag) + 1 < ngi] / ag.add(group_id)
     }
   }
 }

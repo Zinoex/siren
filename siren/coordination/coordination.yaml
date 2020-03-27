@@ -1,38 +1,42 @@
 # Underlying assumptions:
 # - Reliable (integrity and liveness) communication channels
 # - Authenticated and signed communication
-# - All messages are sent using reliable multicast - a controller sends its value to everyone (in the group of signals)
-# who each forward the same value to all the other lights (this implementation is reliable multicast over basic multicast).
+# - All messages are sent using reliable multicast - a controller sends its value to every member of the group reliably (integrity, validity, and agreement)
 # - An upper bound, D, on propagation delay
 
 statechart:
   name: Coordination
-  # In addition to the preamble, we assume signal_id and group_id is defined in the interpreter context.
+  # We assume signal_id, group_id and ngi are defined appropriately in the interpreter context.
   # See https://sismic.readthedocs.io/en/latest/code.html#context-of-the-python-code-evaluator.
   preamble: |
-    ngi = 1  # number of signal groups at intersection
     ag = set()  # active signal groups
     as = set()  # active signals
-    r = 0  # synchronization round
+    r = {signal_id: (0, None, None)}  # synchronization dict
+    color = 'red'
   root state:
     name: Node
     parallel states:
       - name: IntersectionHealth
         initial: StartIntersectionMonitoring
         states:
-          - name: StartIntersectionMonitoring
+          - name: StartIntersectionMonitoring  # TODO: Distinguish between the first light and the rest.
             transitions:
               - target: Running
                 event: group_alive
-                guard: event.group == group_id
+                guard: event.group == group_id and len(ag) + 1 == ngi
                 action: ag.add(group_id)
-          - name: Running  # TODO: Update number of active signal groups and their ids (piggyback the timesync)
+              - target: Stopped
+                event: group_alive
+                guard: event.group == group_id and len(ag) + 1 < ngi
+                action: ag.add(group_id)
+          - name: Running  # TODO: Update number of active signal groups and their ids (piggyback the sync)
             transitions:
               - target: Stopped
                 event: dead_group
                 action: ag.discard(event.group)
             contract:
               - always: len(ag) == ngi
+              - always: group_id in ag
           - name: Stopped
             transitions:
               - target: Stopped
@@ -62,7 +66,7 @@ statechart:
           - name: HealthyGroup
             on entry: send('group_alive', group=group_id)
             transitions:
-              - target: HealthyGroup  # TODO: Update number of signals (piggyback the timesync)
+              - target: HealthyGroup  # TODO: Update number of signals (piggyback the sync)
                 event: broken_signal
                 guard: len(as) > 1
                 action: as.discard(event.signal)
@@ -74,6 +78,7 @@ statechart:
                 guard: len(as) == 1
             contract:
               - always: len(as) > 0
+              - always: signal_id in as
           - name: DeadGroup
             on entry: send('dead_group', group=group_id)
             transitions:
@@ -93,11 +98,33 @@ statechart:
                 guard: event.signal == signal_id
           - name: BrokenLights
             on entry: send('broken_signal', group=group_id, signal=signal_id)
-      - name: LightControl
-      - name: TimeSync
-        # When every controller uses reliable multicast to transmit its current timestamp,
-        # we know that every member of the group has received the timestamp of everybody else.
+      - name: LightControl  # TODO: Implement conflict analysis - revert back to interval-based schedule if a conflict is met.
+        initial: LightHistory
+        states:
+          - name: LightHistory
+            type: shallow history
+          - name: Off
+            on entry: |
+              send('light_off')
+              color == 'red'
+            contract:
+              - always: color == 'red'
+          - name: On  # TODO: Implement schedule stepping
+            on entry: send('light_on', color=color)
+            transitions:
+              - target: Off
+                event: broken_signal
+                guard: event.signal = signal_id
+              - target: Off
+                guard: active('Stopped')
+      - name: Synchronization
+        # We want to synchronize time and schedule amongst all the controllers.
+        # Using reliable multicast, we can perform synchronization in rounds by everybody transmitting a tuple of (round, timestamp, schedule).
+        # When every controller uses reliable multicast to transmit its values,
+        # we know that every member of the group has received the values from everybody else.
         # A decision function (avg) is applied when all timestamps are received, and clocks are updated accordingly.
+        # The decision function for the schedules can be implemented as "select the latest schedule".
         #
         # If we assume an upper bound, T, on the interval between rounds of synchronization.
         # Then if the time between two rounds is more than T + D for any node, we can assume that this node is dead.
+        # TODO: Implement synchronization
