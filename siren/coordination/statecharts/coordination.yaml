@@ -11,7 +11,7 @@ statechart:
   preamble: |
     ag = set()  # active signal groups
     as = set()  # active signals
-    r = {signal_id: (0, None, None)}  # synchronization dict
+    r = {signal_id: Round(0, None, None)}  # synchronization dict
     color = 'red'
   root state:
     name: Node
@@ -107,10 +107,13 @@ statechart:
             on entry: |
               send('light_off')
               color == 'red'
+            transitions:
+              - target: On
+                guard: active('Running') and active('HealthyLights')
             contract:
-              - always: color == 'red'
+              - after: color == 'red'
           - name: On  # TODO: Implement schedule stepping
-            on entry: send('light_on', color=color)
+            on entry: send('light_on', signal=signal_id, color=color)
             transitions:
               - target: Off
                 event: broken_signal
