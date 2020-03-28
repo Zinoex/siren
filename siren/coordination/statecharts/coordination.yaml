@@ -6,13 +6,24 @@
 
 statechart:
   name: Coordination
-  # We assume signal_id, group_id and ngi are defined appropriately in the interpreter context.
+  # We assume:
+  # - signal_id
+  # - group_id
+  # - ngi - number of groups in intersection
+  # - time_decision - decision function for time sync
+  # - schedule_decision - decision function for schedule sync
+  # - ic - intermediate color function
+  # - Round
+  # - Schedule
+  # are defined appropriately in the interpreter context.
   # See https://sismic.readthedocs.io/en/latest/code.html#context-of-the-python-code-evaluator.
   preamble: |
     ag = set()  # active signal groups
     as = set()  # active signals
-    r = {signal_id: Round(0, None, None)}  # synchronization dict
+    r = {signal_id: Round(0, 0, Schedule())}  # synchronization dict
     color = 'red'
+    schedule = Schedule()
+    last_change = -1
   root state:
     name: Node
     parallel states:
@@ -98,11 +109,9 @@ statechart:
                 guard: event.signal == signal_id
           - name: BrokenLights
             on entry: send('broken_signal', group=group_id, signal=signal_id)
-      - name: LightControl  # TODO: Implement conflict analysis - revert back to interval-based schedule if a conflict is met.
-        initial: LightHistory
+      - name: LightControl  # TODO: Implement conflict, green safety, yellow duration and starvation analysis - revert back to interval-based schedule if any violates the conditions. If that violates it too, shut off
+        initial: Off
         states:
-          - name: LightHistory
-            type: shallow history
           - name: Off
             on entry: |
               send('light_off')
@@ -112,14 +121,19 @@ statechart:
                 guard: active('Running') and active('HealthyLights')
             contract:
               - after: color == 'red'
-          - name: On  # TODO: Implement schedule stepping
+          - name: On
             on entry: send('light_on', signal=signal_id, color=color)
             transitions:
               - target: Off
                 event: broken_signal
                 guard: event.signal = signal_id
               - target: Off
-                guard: active('Stopped')
+                guard: active('Stopped') or schedule.empty(group_id, time)
+              - target: On
+                guard: not schedule.empty(group_id, time) and schedule[group_id, time] != color
+                action: |
+                  color = schedule[group_id, time]
+                  send('light_on', signal=signal_id, color=color)
       - name: Synchronization
         # We want to synchronize time and schedule amongst all the controllers.
         # Using reliable multicast, we can perform synchronization in rounds by everybody transmitting a tuple of (round, timestamp, schedule).

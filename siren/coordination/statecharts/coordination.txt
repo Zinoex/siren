@@ -3,27 +3,28 @@ title Coordination
 note top of Node
   ag = set()  # active signal groups
   as = set()  # active signals
-  r = {signal_id: Round(0, None, None)}  # synchronization dict
+  r = {signal_id: Round(0, 0, Schedule())}  # synchronization dict
   color = 'red'
+  schedule = Schedule()
+  last_change = -1
 end note
 state "Node" as Node {
   state "Synchronization" as Synchronization {
   }
   --
   state "LightControl" as LightControl {
-    [*] --> LightHistory
+    [*] --> Off
     state "On" as On {
       On : **entry** / send('light_on', signal=signal_id, color=color)
       On --> Off : broken_signal [event.signal = signal_id]
-      On --> Off : [active('Stopped')]
+      On --> Off : [active('Stopped') or schedule.empty(group_id, time)]
+      On --> On : [not schedule.empty(group_id, time) and schedule[group_id, time] != color] / color = schedule[group_id, time]; send('light_on', signal=signal_id, color=color)
     }
     state "Off" as Off {
       Off : **entry** / send('light_off'); color == 'red'
       Off :
       Off : **post:** color == 'red'
       Off --> On : [active('Running') and active('HealthyLights')]
-    }
-    state "H" as LightHistory {
     }
   }
   --
