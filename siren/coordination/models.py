@@ -1,13 +1,38 @@
 class Schedule:
-    pass
+    """
+    Base schedule. Defaults to saying that the schedule is empty at all time steps and therefore,
+    it is both legal and compatible with any history and timestamp.
+    Should be inherited for time schedules and temporary schedules (e.g. next 20 seconds).
+    Legal and compatible functions should not be overridden.
 
-    # TODO: Implement conflict, green safety, yellow duration and starvation analysis
+    All schedules should expect to be preempted if new schedules arrive but the switch will happen at a safe
+    timestamp (no change soon in new schedule).
+    """
 
     def legal(self, history):
-        raise NotImplementedError()
+        return self.conflict_safe() and \
+               self.green_interval_safe(history) and \
+               self.intermediate_duration_safe(history) and \
+               self.legal_phases() and \
+               self.starvation_safe(history)
 
     def compatible(self, history, time):
-        raise NotImplementedError()
+        return True
 
     def empty(self, time):
-        raise NotImplementedError()
+        return True
+
+    def conflict_safe(self):
+        return True
+
+    def green_interval_safe(self, history):
+        return True
+
+    def intermediate_duration_safe(self, history):
+        return True
+
+    def legal_phases(self):
+        return True
+
+    def starvation_safe(self, history):
+        return True
