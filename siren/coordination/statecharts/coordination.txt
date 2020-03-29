@@ -69,12 +69,17 @@ state "Node" as Node {
   --
   state "LightControl" as LightControl {
     [*] --> Off
+    state "TemporaryOff" as TemporaryOff {
+      TemporaryOff : **entry** / send('light_off', signal=signal_id, time=time)
+      TemporaryOff --> On : [not schedule.empty(time) and not schedule[group_id, time]] / color = schedule[group_id, time]
+    }
     state "On" as On {
       On : **entry** / send('light_on', signal=signal_id, color=color)
       On :
       On : **pre:** not schedule.empty(time)
       On --> Off : [active('Stopped') or active('BrokenLights') or schedule.empty(time)]
-      On --> On : [not schedule.empty(time) and schedule[group_id, time] != color] / color = schedule[group_id, time]; send('light_on', signal=signal_id, color=color, time=time)
+      On --> On : [not schedule.empty(time) and schedule[group_id, time] and schedule[group_id, time] != color] / color = schedule[group_id, time]; send('light_on', signal=signal_id, color=color, time=time)
+      On --> TemporaryOff : [not schedule.empty(time) and not schedule[group_id, time]] / color = None
     }
     state "Off" as Off {
       Off : **entry** / send('light_off', signal=signal_id, time=time); color == 'red'

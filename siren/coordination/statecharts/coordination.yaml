@@ -100,12 +100,21 @@ statechart:
               - target: Off
                 guard: active('Stopped') or active('BrokenLights') or schedule.empty(time)
               - target: On
-                guard: not schedule.empty(time) and schedule[group_id, time] != color
+                guard: not schedule.empty(time) and schedule[group_id, time] and schedule[group_id, time] != color
                 action: |
                   color = schedule[group_id, time]
                   send('light_on', signal=signal_id, color=color, time=time)
+              - target: TemporaryOff
+                guard: not schedule.empty(time) and not schedule[group_id, time]
+                action: color = None
             contract:
               - before: not schedule.empty(time)
+          - name: TemporaryOff
+            on entry: send('light_off', signal=signal_id, time=time)
+            transitions:
+              - target: On
+                guard: not schedule.empty(time) and not schedule[group_id, time]
+                action: color = schedule[group_id, time]
       - name: History
         initial: AwaitHistory
         states:

@@ -3,7 +3,6 @@ class Schedule:
     Base schedule. Defaults to saying that the schedule is empty at all time steps and therefore,
     it is both legal and compatible with any history and timestamp.
     Should be inherited for time schedules and temporary schedules (e.g. next 20 seconds).
-    Legal and compatible functions should not be overridden.
 
     All schedules should expect to be preempted if new schedules arrive but the switch will happen at a safe
     timestamp (no change soon in new schedule).
