@@ -3,7 +3,6 @@ class Schedule:
 
 
 class Round:
-    def __init__(self, n: int, t: float, s: Schedule):
-        self.n = n
-        self.t = t
-        self.s = s
+    def __init__(self, n: int, s: Schedule):
+        self.n = n  # Round index
+        self.s = s  # Schedule

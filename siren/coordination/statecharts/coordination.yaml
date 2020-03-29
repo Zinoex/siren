@@ -1,7 +1,7 @@
 # Underlying assumptions:
 # - Reliable (integrity and liveness) communication channels
 # - Authenticated and signed communication
-# - All messages are sent using reliable multicast - a controller sends its value to every member of the group reliably (integrity, validity, and agreement)
+# - All messages/events are sent using reliable multicast - a controller sends its value to every member of the group reliably (integrity, validity, and agreement)
 # - An upper bound, D, on propagation delay
 
 statechart:
@@ -10,49 +10,43 @@ statechart:
   # - signal_id
   # - group_id
   # - ngi - number of groups in intersection
-  # - time_decision - decision function for time sync
   # - schedule_decision - decision function for schedule sync
-  # - ic - intermediate color function
   # - Round
   # - Schedule
+  # - T - transmission interval
+  # - D - propagation delay
   # are defined appropriately in the interpreter context.
   # See https://sismic.readthedocs.io/en/latest/code.html#context-of-the-python-code-evaluator.
   preamble: |
     ag = set()  # active signal groups
     as = set()  # active signals
-    r = {signal_id: Round(0, 0, Schedule())}  # synchronization dict
+    r = {signal_id: Round(0, Schedule())}  # synchronization dict
+    hb = {signal_id: 0}
+    g = {signal_id: group_id}
     color = 'red'
     schedule = Schedule()
-    last_change = -1
   root state:
     name: Node
     parallel states:
       - name: IntersectionHealth
         initial: StartIntersectionMonitoring
         states:
-          - name: StartIntersectionMonitoring  # TODO: Distinguish between the first light and the rest.
+          - name: StartIntersectionMonitoring
+            transitions:
+              - target: DecideStart
+                event: group_alive
+                guard: event.group == group_id
+                action: ag.add(group_id)
+          - name: DecideStart
             transitions:
               - target: Running
-                event: group_alive
-                guard: event.group == group_id and len(ag) + 1 == ngi
-                action: ag.add(group_id)
+                guard: len(ag) + 1 == ngi
               - target: Stopped
-                event: group_alive
-                guard: event.group == group_id and len(ag) + 1 < ngi
-                action: ag.add(group_id)
-          - name: Running  # TODO: Update number of active signal groups and their ids (piggyback the sync)
-            transitions:
-              - target: Stopped
-                event: dead_group
-                action: ag.discard(event.group)
-            contract:
-              - always: len(ag) == ngi
-              - always: group_id in ag
+                guard: len(ag) + 1 < ngi
           - name: Stopped
             transitions:
               - target: Stopped
                 event: dead_group
-                guard: len(ag) > 0
                 action: ag.discard(event.group)
               - target: Running
                 event: group_alive
@@ -62,9 +56,20 @@ statechart:
                 event: group_alive
                 guard: len(ag) + 1 < ngi
                 action: ag.add(event.group)
+              - target: Running
+                event: synchronized
+                guard: len(ag) = ngi
             contract:
               - always: len(ag) < ngi
               - always: len(ag) >= 0
+          - name: Running  # TODO: Update number of active signal groups and their ids (piggyback the heartbeat)
+            transitions:
+              - target: Stopped
+                event: dead_group
+                action: ag.discard(event.group)
+            contract:
+              - always: len(ag) == ngi
+              - always: group_id in ag
       - name: SignalGroupHealth
         initial: StartGroupMonitoring
         states:
@@ -77,13 +82,15 @@ statechart:
           - name: HealthyGroup
             on entry: send('group_alive', group=group_id)
             transitions:
-              - target: HealthyGroup  # TODO: Update number of signals (piggyback the sync)
+              - target: HealthyGroup  # TODO: Update number of signals (piggyback the heartbeat)
                 event: broken_signal
                 guard: len(as) > 1
                 action: as.discard(event.signal)
               - target: HealthyGroup
                 event: join_signal
-                action: as.add(event.signal)
+                action: |
+                  as.add(event.signal)
+                  g[event.signal] = event.group
               - target: DeadGroup
                 event: broken_signal
                 guard: len(as) == 1
@@ -95,7 +102,9 @@ statechart:
             transitions:
               - target: HealthyGroup
                 event: join_signal
-                action: as.add(event.signal)
+                action: |
+                  as.add(event.signal)
+                  g[event.signal] = event.group
             contract:
               - always: len(as) == 0
       - name: SignalHealth
@@ -109,7 +118,9 @@ statechart:
                 guard: event.signal == signal_id
           - name: BrokenLights
             on entry: send('broken_signal', group=group_id, signal=signal_id)
-      - name: LightControl  # TODO: Implement conflict, green safety, yellow duration and starvation analysis - revert back to interval-based schedule if any violates the conditions. If that violates it too, shut off
+      - name: LightControl
+        # TODO: Implement conflict, green safety, yellow duration and starvation analysis - revert back to interval-based schedule if any violates the conditions. If that violates it too, shut off
+        # TODO: Receive new schedule
         initial: Off
         states:
           - name: Off
@@ -128,20 +139,49 @@ statechart:
                 event: broken_signal
                 guard: event.signal = signal_id
               - target: Off
-                guard: active('Stopped') or schedule.empty(group_id, time)
+                guard: active('Stopped') or schedule.empty(time)
               - target: On
-                guard: not schedule.empty(group_id, time) and schedule[group_id, time] != color
+                guard: not schedule.empty(time) and schedule[group_id, time] != color
                 action: |
                   color = schedule[group_id, time]
                   send('light_on', signal=signal_id, color=color)
+            contract:
+              - before: not schedule.empty(time)
       - name: Synchronization
-        # We want to synchronize time and schedule amongst all the controllers.
-        # Using reliable multicast, we can perform synchronization in rounds by everybody transmitting a tuple of (round, timestamp, schedule).
+        # We want to synchronize the schedule amongst all the controllers.
+        # Using reliable multicast, we can perform synchronization in rounds by everybody transmitting a tuple of (signal, round, schedule).
         # When every controller uses reliable multicast to transmit its values,
         # we know that every member of the group has received the values from everybody else.
-        # A decision function (avg) is applied when all timestamps are received, and clocks are updated accordingly.
         # The decision function for the schedules can be implemented as "select the latest schedule".
-        #
-        # If we assume an upper bound, T, on the interval between rounds of synchronization.
-        # Then if the time between two rounds is more than T + D for any node, we can assume that this node is dead.
         # TODO: Implement synchronization
+        intial: Send
+        states:
+          - name: Send
+            on entry: send('sync_round', signal=signal_id, n=r[signal_id].n + 1, s=r[signal_id].s)
+            on exit: r[signal_id].n += 1
+          - name: Await
+            transitions:
+              - target: Decide
+          - name: Decide
+            on entry: schedule = schedule_decision(r, as)
+            on exit: send('synchronized')
+            transitions:
+              - target: Send
+      - name: Heartbeat
+        # If we assume an interval, T, between heartbeats.
+        # Then if the time between two heartbeats is more than T + 2 * D for any node, we can assume that this node is dead.
+        transitions:
+          - target: Heatbeat
+            guard: time - hb[signal_id] > T
+            action: send('heartbeat', signal=signal_id, group=group_id)
+          - target: Heartbeat
+            event: heartbeat
+            action: |
+              as.add(event.signal)
+              ag.add(event.group)
+              g[event.signal] = event.group
+          - target: Heartbeat
+            guard: |
+              any(map(lambda b: time - b > T + 2 * D))
+            action: |
+              remove = list(map(lambda b: b[0], filter(lambda b: time - b[1] > T + 2 * D, hb.items())))

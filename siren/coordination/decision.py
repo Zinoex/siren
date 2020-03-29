@@ -1,13 +1,7 @@
-from typing import Dict, Union, Set
-import statistics
+from typing import Dict, Set
 
 from .models import Round, Schedule
 
 
-def time_decision(sync_dict: Dict[Union[int, str], Round], active_signals: Set[Union[int, str]]) -> float:
-    timestamps = [sync_round.t for signal, sync_round in sync_dict if signal in active_signals]
-    return statistics.mean(timestamps)
-
-
-def schedule_decision(sync_dict: Dict[Union[int, str], Round], active_signals: Set[Union[int, str]]) -> Schedule:
+def schedule_decision(sync_dict: Dict[int, Round], active_signals: Set[int]) -> Schedule:
     raise NotImplementedError()

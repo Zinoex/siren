@@ -6,19 +6,28 @@ note top of Node
   r = {signal_id: Round(0, 0, Schedule())}  # synchronization dict
   color = 'red'
   schedule = Schedule()
-  last_change = -1
 end note
 state "Node" as Node {
   state "Synchronization" as Synchronization {
+    state "Deciding" as Deciding {
+    }
+    state "Awaiting" as Awaiting {
+    }
+    state "Sending" as Sending {
+      Sending : **entry** / send('sync_round', signal=signal_id, n=r[signal_id].n + 1, s=r[signal_id].s)
+      Sending : **exit** / schedule = schedule_decision(r, as); r[signal_id].s = schedule; r[signal_id].n += 1
+    }
   }
   --
   state "LightControl" as LightControl {
     [*] --> Off
     state "On" as On {
       On : **entry** / send('light_on', signal=signal_id, color=color)
+      On :
+      On : **pre:** not schedule.empty(time)
       On --> Off : broken_signal [event.signal = signal_id]
-      On --> Off : [active('Stopped') or schedule.empty(group_id, time)]
-      On --> On : [not schedule.empty(group_id, time) and schedule[group_id, time] != color] / color = schedule[group_id, time]; send('light_on', signal=signal_id, color=color)
+      On --> Off : [active('Stopped') or schedule.empty(time)]
+      On --> On : [not schedule.empty(time) and schedule[group_id, time] != color] / color = schedule[group_id, time]; send('light_on', signal=signal_id, color=color)
     }
     state "Off" as Off {
       Off : **entry** / send('light_off'); color == 'red'
@@ -63,21 +72,25 @@ state "Node" as Node {
   --
   state "IntersectionHealth" as IntersectionHealth {
     [*] --> StartIntersectionMonitoring
-    state "Stopped" as Stopped {
-      Stopped : **inv:** len(ag) < ngi
-      Stopped : **inv:** len(ag) >= 0
-      Stopped --> Stopped : dead_group [len(ag) > 0] / ag.discard(event.group)
-      Stopped --> Running : group_alive [len(ag) + 1 = ngi] / ag.add(event.group)
-      Stopped --> Stopped : group_alive [len(ag) + 1 < ngi] / ag.add(event.group)
-    }
     state "Running" as Running {
       Running : **inv:** len(ag) == ngi
       Running : **inv:** group_id in ag
       Running --> Stopped : dead_group / ag.discard(event.group)
     }
+    state "Stopped" as Stopped {
+      Stopped : **inv:** len(ag) < ngi
+      Stopped : **inv:** len(ag) >= 0
+      Stopped --> Stopped : dead_group / ag.discard(event.group)
+      Stopped --> Running : group_alive [len(ag) + 1 = ngi] / ag.add(event.group)
+      Stopped --> Stopped : group_alive [len(ag) + 1 < ngi] / ag.add(event.group)
+      Stopped --> Running : synchronized [len(ag) = ngi]
+    }
+    state "DecideStart" as DecideStart {
+      DecideStart --> Running : [len(ag) + 1 == ngi]
+      DecideStart --> Stopped : [len(ag) + 1 < ngi]
+    }
     state "StartIntersectionMonitoring" as StartIntersectionMonitoring {
-      StartIntersectionMonitoring --> Running : group_alive [event.group == group_id and len(ag) + 1 == ngi] / ag.add(group_id)
-      StartIntersectionMonitoring --> Stopped : group_alive [event.group == group_id and len(ag) + 1 < ngi] / ag.add(group_id)
+      StartIntersectionMonitoring --> DecideStart : group_alive [event.group == group_id] / ag.add(group_id)
     }
   }
 }
