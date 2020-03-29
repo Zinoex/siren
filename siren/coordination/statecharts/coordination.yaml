@@ -138,7 +138,7 @@ statechart:
           - name: NewSchedule
             transitions:
               - target: NoSchedule
-                guard: next_schedule.compatible(history, time)
+                guard: next_schedule.compatible(history, time, schedule)
                 action: schedule = next_schedule
           - name: NoSchedule
             transitions:
@@ -156,7 +156,7 @@ statechart:
               - name: NewTimeSchedule
                 transitions:
                   - target: RunningTimeSchedule
-                    guard: next_schedule.compatible(history, time)  # TODO: Shutoff if time_schedule is illegal
+                    guard: next_schedule.compatible(history, time, schedule)  # TODO: Shutoff if time_schedule is illegal
               - name: RunningTimeSchedule
                 on entry: schedule = next_schedule
             transitions:

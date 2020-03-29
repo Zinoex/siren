@@ -13,9 +13,10 @@ class Schedule:
                self.green_interval_safe(history) and \
                self.intermediate_duration_safe(history) and \
                self.legal_phases() and \
-               self.starvation_safe(history)
+               self.starvation_safe(history) and \
+               self.minimum_green_safe(history)
 
-    def compatible(self, history, time):
+    def compatible(self, history, time, old_schedule):
         return True
 
     def empty(self, time):
@@ -34,4 +35,7 @@ class Schedule:
         return True
 
     def starvation_safe(self, history):
+        return True
+
+    def minimum_green_safe(self, history):
         return True
