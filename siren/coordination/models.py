@@ -1,8 +1,13 @@
 class Schedule:
     pass
 
+    # TODO: Implement conflict, green safety, yellow duration and starvation analysis
 
-class Round:
-    def __init__(self, n: int, s: Schedule):
-        self.n = n  # Round index
-        self.s = s  # Schedule
+    def legal(self, history):
+        raise NotImplementedError()
+
+    def compatible(self, history, time):
+        raise NotImplementedError()
+
+    def empty(self, time):
+        raise NotImplementedError()

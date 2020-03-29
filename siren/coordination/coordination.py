@@ -3,8 +3,7 @@ import os
 from sismic.interpreter import Interpreter
 from sismic.io import import_from_yaml
 
-from .models import Round, Schedule
-from .decision import schedule_decision
+from .models import Schedule
 
 
 class CoordinationModelImporter:
@@ -19,8 +18,6 @@ class CoordinationModelImporter:
             'signal_id': signal_id,
             'group_id': group_id,
             'ngi': n_groups,
-            'schedule_decision': schedule_decision,
-            'Round': Round,
             'Schedule': Schedule
         }
 
