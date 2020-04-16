@@ -16,6 +16,6 @@ conflict_matrix = ...
 ];
 
 
-green_interval_matrix = [[0 5] [5 0]];
-yellow_time_vector = [3 3];
-amber_time_vector = [3 3];
+green_interval_matrix = [[0 5] [5 0]];  %LOOK HERE: Should be size 4x4
+yellow_time_vector = [3 3];  % LOOK HERE: Should be length 4
+amber_time_vector = [3 3];   % LOOK HERE: Should be length 4

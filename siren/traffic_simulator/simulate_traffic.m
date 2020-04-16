@@ -11,5 +11,5 @@ function [arr_cars, dep_cars] = simulate_traffic(r, g, y, a, arr_rates, dep_rate
     input_sz_match = all(size(g) == sz & size(y) == sz & size(a) == sz & size(arr_rates) == sz & size(dep_rates) == sz);
     assert(input_sz_match & sz(1)==1, "Error, inputs vectors must have same length.");   
     arr_cars = poissrnd(arr_cars_mean);  % LOOK HERE: Shouldn't this be 'arr_rates'
-    dep_cars = poissrnd(dep_cars_mean);  % Same here with 'dep_rates'
+    dep_cars = poissrnd(dep_cars_mean);  % LOOK HERE: Same here with 'dep_rates'
     dep_cars = dep_cars .* (g + y);
