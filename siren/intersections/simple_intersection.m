@@ -1,4 +1,5 @@
 %Simple intersection with four lanes and no left turns
+num_signals = 4;
 
 %Starting lane states (colors)
 green = [1; 0; 1; 0];
@@ -15,7 +16,14 @@ conflict_matrix = ...
     1, 0, 1, 0
 ];
 
+green_interval_matrix = ...
+[
+    0, 5, 0, 5; 
+    5, 0, 5, 0;
+    0, 5, 0, 5; 
+    5, 0, 5, 0
+];
 
-green_interval_matrix = [[0 5] [5 0]];  %LOOK HERE: Should be size 4x4
-yellow_time_vector = [3 3];  % LOOK HERE: Should be length 4
-amber_time_vector = [3 3];   % LOOK HERE: Should be length 4
+yellow_time_vector = [4; 4; 4; 4];
+amber_time_vector = [2; 2; 2; 2];
+minimum_green_vector = [6; 6; 6; 6];
