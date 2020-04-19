@@ -52,6 +52,8 @@ segments(3).lanes = 2;
 segments(3).start = [0.75 0.5];
 segments(3).end = [1.4 0.5];
 
+clear ped_xings;
+
 clear connectors;
 
 connectors(1).coords = [0.25 0.6; 0.35 0.55; 0.35 0.45; 0.25 0.4];

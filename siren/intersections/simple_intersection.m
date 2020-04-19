@@ -49,12 +49,12 @@ clear segments;
 
 segments(1).lanes = 2;
 segments(1).double_yellow = 1;
-segments(1).start = [-0.2 0.5];
+segments(1).start = [-0.4 0.5];
 segments(1).end = [0.4 0.5];
 
 segments(2).lanes = 2;
 segments(2).double_yellow = 1;
-segments(2).start = [1.2 0.5];
+segments(2).start = [1.4 0.5];
 segments(2).end = [0.6 0.5];
 
 segments(3).lanes = 2;
@@ -66,6 +66,8 @@ segments(4).lanes = 2;
 segments(4).double_yellow = 1;
 segments(4).start = [0.5 0];
 segments(4).end = [0.5 0.4];
+
+clear ped_xings;
 
 clear connectors;
 
