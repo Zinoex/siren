@@ -1,6 +1,9 @@
 % Super simple intersection with two lanes. 
 % Could be a one-lane bidirectional light controlled street.
 num_signals = 2;
+num_queues = 2;
+
+S = eye(num_signals);
 
 %Starting lane states (colors)
 green = [1; 0];
