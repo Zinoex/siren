@@ -1,5 +1,8 @@
 %Simple intersection with four lanes and no left turns
 num_signals = 4;
+num_queues = 4;
+
+S = eye(num_signals);
 
 %Starting lane states (colors)
 green = [1; 0; 1; 0];

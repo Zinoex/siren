@@ -11,6 +11,10 @@
 % Signal 8 = BBicycle (from across B)
 
 num_signals = 8;
+num_queues = 8;
+
+S = eye(num_signals);
+S(4, 3) = 1;
 
 %Starting lane states (colors)
 green = [0; 0; 0; 0; 0; 0; 0; 0];
