@@ -132,6 +132,7 @@ dmypy.json
 .idea
 
 # Matlab backup files
-.asv
+*.asv
 
 **/slprj
+*.slxc
