@@ -1,5 +1,6 @@
 function xk1 = StateFn(xk, uk)
 
+
 xk1 = xk;
 
 % Times
@@ -21,10 +22,13 @@ xk1(a_idx) = (xk(a_idx) + 1) .* a;
 xk1(ng_idx) = (xk(ng_idx) + 1) .* (1 - g);
 
 % Queue params
+c_a = uk(index(4));
+c_d = uk(index(5));
 q_idx = index(5);
 s_idx = index(6);
 tq_idx = index(7);
 
+% Replace c_a and c_d with uk(end idxs)
 xk1(q_idx) = rectifier(xk(q_idx) + c_a - c_d .* (g + y));
 xk1(s_idx) = xk(s_idx) + c_a .* (r + a);
 xk1(tq_idx) = (xk(tq_idx) + 1) .* indicator((1 - g) .* xk1(q_idx));
