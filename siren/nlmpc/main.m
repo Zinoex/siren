@@ -24,16 +24,16 @@ function main(intersection_name)
 %     nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
 %     Jac_matrix = zeros(3 * num_signals, 8 * num_signals);
 
-    x = 7
-    nlobj.Jacobian.OutputFcn = "construct_simple_jacobian"
+    x = 7;
+    nlobj.Jacobian.OutputFcn = "OutputJacobian";
 
     xk = zeros(nx, 1);
     mv = zeros(4 * num_signals, 1).';
     md = zeros(2 * num_signals, 1).';
     yref = zeros(3 * num_signals, 1).';
     nloptions = nlmpcmoveopt;
-    nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, signals};
-    [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions)
+    nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals};
+    [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
     Duration = 20;
 end
 %     for ct = 1:20
@@ -58,10 +58,3 @@ end
 %         waitbar(ct*Ts/20,hbar);
 %     end
 % close(hbar);
-
-function Jacobian = construct_simple_jacobian(x, u, conflict_matrix, green_interval, yellow_time, amber_time, minimum_green_vector, num_signals)
-    Jacobian = zeros(3 * num_signals, 8 * num_signals);
-    for i = 1:3*num_signals
-        Jacobian(end+1-i, end+1-i) = 1;
-    end
-end
