@@ -28,7 +28,7 @@ function main(intersection_name)
     nlobj.Jacobian.OutputFcn = "OutputJacobian";
 
     xk = zeros(nx, 1);
-    mv = zeros(4 * num_signals, 1).';
+    mv = [green; red; yellow; amber];
     md = ones(2 * num_signals, 1).';
     yref = zeros(3 * num_signals, 1).';
     nloptions = nlmpcmoveopt;
