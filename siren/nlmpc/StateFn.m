@@ -1,4 +1,5 @@
-function xk1 = StateFn(xk, uk)
+function xk1 = StateFn(xk, uk, ...
+    conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals)
 
 
 xk1 = xk;
