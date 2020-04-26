@@ -7,7 +7,6 @@ function main(intersection_name)
     nx = 8 * num_signals;
     ny = 3 * num_signals;
     nu = 6 * num_signals;
-%     nlobj = nlmpc(nx, ny, nu);
     mvIndex = (1:num_signals *4);
     mdIndex = (num_signals * 4 + 1:num_signals * 6);
     
@@ -15,7 +14,7 @@ function main(intersection_name)
    
     % Configure MPC
     nlobj.Ts = Ts;
-    nlobj.PredictionHorizon = 10;
+    nlobj.PredictionHorizon = 5;
     nlobj.ControlHorizon = 5;
     
     nlobj.Model.StateFcn = "StateFn";
@@ -35,6 +34,10 @@ function main(intersection_name)
     nloptions = nlmpcmoveopt;
     nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals};
     [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
+    for i = 1:5
+        [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
+    end
+    mv
 end
 %     for ct = 1:20
 %         [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions)

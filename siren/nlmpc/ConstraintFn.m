@@ -25,28 +25,28 @@ function ceq = ConstraintFn(X, U, data, ...
     ceq((1:size_pairwise) + size_lights) = stacked_pairwise;
 
     % Transition (e.g. from red to amber is allowed) constraints
-    p = data.PredictionHorizon;
+%     p = data.PredictionHorizon;
+% 
+%     old_idx = 1:p - 1;
+%     new_idx = 2:p;
+% 
+%     yt = yellow(old_idx, :) .* (green(new_idx, :) + amber(new_idx, :));
+%     gt = green(old_idx, :) .* (red(new_idx, :) + amber(new_idx, :));
+%     at = amber(old_idx, :) .* (red(new_idx, :) + yellow(new_idx, :));
+%     ryt = red(old_idx, :) .* yellow(new_idx, :);
+%     rgt = red(old_idx, :) .* green(new_idx, :) .* repmat(amber_time_vector, 1, p - 1).';
+%     rat = red(old_idx, :) .* amber(new_idx, :) .* (indicator(repmat(amber_time_vector, 1, p - 1).') - 1);
+% 
+%     [stacked_trans, size_trans] = mstack([yt; gt; at; ryt; rgt; rat]);
+%     ceq((1:size_trans) + size_lights + size_pairwise) = stacked_trans;
+% 
+%     % Conflict
+%     non_blocking = green + yellow + amber;
 
-    old_idx = 1:p - 1;
-    new_idx = 2:p;
-
-    yt = yellow(old_idx, :) .* (green(new_idx, :) + amber(new_idx, :));
-    gt = green(old_idx, :) .* (red(new_idx, :) + amber(new_idx, :));
-    at = amber(old_idx, :) .* (red(new_idx, :) + yellow(new_idx, :));
-    ryt = red(old_idx, :) .* yellow(new_idx, :);
-    rgt = red(old_idx, :) .* green(new_idx, :) .* repmat(amber_time_vector, 1, p - 1).';
-    rat = red(old_idx, :) .* amber(new_idx, :) .* (indicator(repmat(amber_time_vector, 1, p - 1).') - 1);
-
-    [stacked_trans, size_trans] = mstack([yt; gt; at; ryt; rgt; rat]);
-    ceq((1:size_trans) + size_lights + size_pairwise) = stacked_trans;
-
-    % Conflict
-    non_blocking = green + yellow + amber;
-
-    for i = 1:size(non_blocking, 2)
-        ceq(i + size_trans + size_lights + size_pairwise) = non_blocking(i, :) * conflict_matrix * non_blocking(i, :).';
-    end
-
+%     for i = 1:size(non_blocking, 2)
+%         ceq(i + size_trans + size_lights + size_pairwise) = non_blocking(i, :) * conflict_matrix * non_blocking(i, :).';
+%     end
+    ceq = ceq';
 function idx = index(i, num_signals)
     idx = i * num_signals + 1:(i + 1) * num_signals;
 
