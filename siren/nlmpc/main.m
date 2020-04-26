@@ -20,8 +20,9 @@ function main(intersection_name)
     
     nlobj.Model.StateFcn = "StateFn";
     nlobj.Model.IsContinuousTime = false;
-    nlobj.Model.OutputFcn = @(x,u,conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, min_green_time_vector, signals)x(end-num_signals*3:end);
-%     nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
+    nlobj.Model.OutputFcn = @(x,u,conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, min_green_time_vector, signals) x(5 * num_signals + 1:end);
+    nlobj.Model.NumberOfParameters = 6;
+    %     nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
 %     Jac_matrix = zeros(3 * num_signals, 8 * num_signals);
 
     x = 7;
