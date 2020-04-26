@@ -29,15 +29,19 @@ function main(intersection_name)
 
     xk = zeros(nx, 1);
     mv = zeros(4 * num_signals, 1).';
-    md = zeros(2 * num_signals, 1).';
+    md = ones(2 * num_signals, 1).';
     yref = zeros(3 * num_signals, 1).';
     nloptions = nlmpcmoveopt;
     nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals};
     [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
     for i = 1:5
         [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
+        uk = [mv; md'];
+        xk = StateFn(xk, uk, ...
+            conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals);
+        mv
     end
-    mv
+    
 end
 %     for ct = 1:20
 %         [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions)

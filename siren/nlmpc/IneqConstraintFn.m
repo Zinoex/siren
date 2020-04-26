@@ -21,8 +21,10 @@ function cineq = function(X, U, e, data, ...
     amber_time = times(:, index(3));
     
     
-    min_green_constraint = min_green_time .* yellow - green_time;
+    min_green_constraint = minimum_green_vector .* yellow - green_time;
     min_green_vec = reshape(min_green_constraint, [], 1);
+    
+%     max_amber_constraint = 
     
     cineq = min_green_vec;
     

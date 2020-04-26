@@ -40,12 +40,12 @@ function ceq = ConstraintFn(X, U, data, ...
 %     [stacked_trans, size_trans] = mstack([yt; gt; at; ryt; rgt; rat]);
 %     ceq((1:size_trans) + size_lights + size_pairwise) = stacked_trans;
 % 
-%     % Conflict
-%     non_blocking = green + yellow + amber;
+    % Conflict
+    non_blocking = green + yellow + amber;
 
-%     for i = 1:size(non_blocking, 2)
-%         ceq(i + size_trans + size_lights + size_pairwise) = non_blocking(i, :) * conflict_matrix * non_blocking(i, :).';
-%     end
+    for i = 1:size(non_blocking, 2)
+        ceq(i + size_lights + size_pairwise) = non_blocking(i, :) * conflict_matrix * non_blocking(i, :).';
+    end
     ceq = ceq';
 function idx = index(i, num_signals)
     idx = i * num_signals + 1:(i + 1) * num_signals;
