@@ -15,14 +15,14 @@ function main(intersection_name)
    
     % Configure MPC
     nlobj.Ts = Ts;
-    nlobj.PredictionHorizon = 40;
-    nlobj.ControlHorizon = 30;
+    nlobj.PredictionHorizon = 10;
+    nlobj.ControlHorizon = 5;
     
     nlobj.Model.StateFcn = "StateFn";
     nlobj.Model.IsContinuousTime = false;
     nlobj.Model.OutputFcn = @(x,u,conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, min_green_time_vector, signals) x(5 * num_signals + 1:end);
     nlobj.Model.NumberOfParameters = 6;
-    %     nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
+    nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
 %     Jac_matrix = zeros(3 * num_signals, 8 * num_signals);
 
     x = 7;
@@ -35,7 +35,6 @@ function main(intersection_name)
     nloptions = nlmpcmoveopt;
     nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals};
     [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
-    Duration = 20;
 end
 %     for ct = 1:20
 %         [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions)

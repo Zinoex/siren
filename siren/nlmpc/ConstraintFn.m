@@ -34,8 +34,8 @@ function ceq = ConstraintFn(X, U, data, ...
     gt = green(old_idx, :) .* (red(new_idx, :) + amber(new_idx, :));
     at = amber(old_idx, :) .* (red(new_idx, :) + yellow(new_idx, :));
     ryt = red(old_idx, :) .* yellow(new_idx, :);
-    rgt = red(old_idx, :) .* green(new_idx, :) .* repmat(amber_time, 1, p - 1).';
-    rat = red(old_idx, :) .* amber(new_idx, :) .* (indicator(repmat(amber_time, 1, p - 1).') - 1);
+    rgt = red(old_idx, :) .* green(new_idx, :) .* repmat(amber_time_vector, 1, p - 1).';
+    rat = red(old_idx, :) .* amber(new_idx, :) .* (indicator(repmat(amber_time_vector, 1, p - 1).') - 1);
 
     [stacked_trans, size_trans] = mstack([yt; gt; at; ryt; rgt; rat]);
     ceq((1:size_trans) + size_lights + size_pairwise) = stacked_trans;
