@@ -1,6 +1,6 @@
 function main(intersection_name)
     if nargin == 0
-        intersection_name = "super_simple_intersection.m"
+        intersection_name = "super_simple_intersection.m";
     end
     run(intersection_name)
     Ts = 20;
@@ -11,6 +11,7 @@ function main(intersection_name)
     mdIndex = (num_signals * 4 + 1:num_signals * 6);
     
     nlobj = nlmpc(nx,ny,'MV',mvIndex,'MD',mdIndex)
+%     nlobj.Weights.ManipulatedVariablesRate = 2*ones(1,4 * num_signals);
    
     % Configure MPC
     nlobj.Ts = Ts;
@@ -24,6 +25,8 @@ function main(intersection_name)
     nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
     nlobj.Optimization.CustomIneqConFcn = "IneqConstraintFn";
 %     Jac_matrix = zeros(3 * num_signals, 8 * num_signals);
+%     nlobj.Optimization.ReplaceStandardCost = false;
+%     nlobj.Optimization.UseSuboptimalSolution = true;
 
     x = 7;
     nlobj.Jacobian.OutputFcn = "OutputJacobian";
@@ -35,18 +38,20 @@ function main(intersection_name)
     md(num_signals + 1:2 * num_signals) = md(num_signals + 1:2 * num_signals) * 5
 
     
-    yref = zeros(3 * num_signals, 1).';
+    yref = zeros(1, 3 * num_signals);
     nloptions = nlmpcmoveopt;
     nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals};
     save("nlmpc_model.mat", "nlobj")
     for i = 1:10
-        
+        if i == 2
+            x=  3
+        end
         [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
         move_flag = info.ExitFlag;
         if move_flag < 0
             fprintf("Error on iteration: %i, no feasible solution found. Flag is negative.", i, move_flag);
             input("\nPress any key to exit.")
-            quit
+            return
         end
         uk = [mv; md'];
         xk = StateFn(xk, uk, ...
