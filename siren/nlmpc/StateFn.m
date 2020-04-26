@@ -4,11 +4,11 @@ function xk1 = StateFn(xk, uk, ...
     xk1 = xk;
 
     % Times
-    g_idx = index(0);
-    r_idx = index(1);
-    y_idx = index(2);
-    a_idx = index(3);
-    ng_idx = index(4);
+    g_idx = index(0, num_signals);
+    r_idx = index(1, num_signals);
+    y_idx = index(2, num_signals);
+    a_idx = index(3, num_signals);
+    ng_idx = index(4, num_signals);
 
     g = uk(g_idx);
     r = uk(r_idx);
@@ -22,18 +22,18 @@ function xk1 = StateFn(xk, uk, ...
     xk1(ng_idx) = (xk(ng_idx) + 1) .* (1 - g);
 
     % Queue params
-    c_a = uk(index(4));
-    c_d = uk(index(5));
-    q_idx = index(5);
-    s_idx = index(6);
-    tq_idx = index(7);
+    c_a = uk(index(4, num_signals));
+    c_d = uk(index(5, num_signals));
+    q_idx = index(5, num_signals);
+    s_idx = index(6, num_signals);
+    tq_idx = index(7, num_signals);
 
     % Replace c_a and c_d with uk(end idxs)
     xk1(q_idx) = rectifier(xk(q_idx) + c_a - c_d .* (g + y));
     xk1(s_idx) = xk(s_idx) + c_a .* (r + a);
     xk1(tq_idx) = (xk(tq_idx) + 1) .* indicator((1 - g) .* xk1(q_idx));
 
-function idx = index(i)
+function idx = index(i, num_signals)
     idx = i * num_signals + 1:(i + 1) * num_signals;
 
 function y = indicator(x)

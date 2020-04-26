@@ -3,10 +3,10 @@ function ceq = ConstraintFn(X, U, data, ...
 
     % Sum of lights = 1
     signals = U(:, 1:4 * num_signals);
-    green = signals(:, index(0));
-    red = signals(:, index(1));
-    yellow = signals(:, index(2));
-    amber = signals(:, index(3));
+    green = signals(:, index(0, num_signals));
+    red = signals(:, index(1, num_signals));
+    yellow = signals(:, index(2, num_signals));
+    amber = signals(:, index(3, num_signals));
 
     sum_of_lights = green + red + yellow + amber - 1;
 
@@ -47,7 +47,7 @@ function ceq = ConstraintFn(X, U, data, ...
         ceq(i + size_trans + size_lights + size_pairwise) = non_blocking(i, :) * conflict_matrix * non_blocking(i, :).';
     end
 
-function idx = index(i)
+function idx = index(i, num_signals)
     idx = i * num_signals + 1:(i + 1) * num_signals;
 
 function [arr_stack, stack_size] = mstack(m)
