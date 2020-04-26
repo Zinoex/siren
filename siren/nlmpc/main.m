@@ -30,7 +30,7 @@ function main(intersection_name)
     xk = zeros(nx, 1);
     mv = [green; red; yellow; amber];
     md = ones(2 * num_signals, 1).';
-    md(1:num_signals) = md(1:num_signals) * 2
+    md(num_signals + 1:2 * num_signals) = md(num_signals + 1:2 * num_signals) * 5
     
     yref = zeros(3 * num_signals, 1).';
     nloptions = nlmpcmoveopt;
@@ -41,7 +41,7 @@ function main(intersection_name)
         uk = [mv; md'];
         xk = StateFn(xk, uk, ...
             conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals);
-        q = xk(4*num_signals + 1:5*num_signals)
+        q = xk(5 * num_signals + 1:6 * num_signals)
         lights_current = mv
         
     end
