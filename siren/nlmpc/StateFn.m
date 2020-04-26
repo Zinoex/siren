@@ -10,10 +10,13 @@ function xk1 = StateFn(xk, uk, ...
     a_idx = index(3, num_signals);
     ng_idx = index(4, num_signals);
 
-    g = uk(g_idx);
-    r = uk(r_idx);
-    y = uk(y_idx);
-    a = uk(a_idx);
+    mv1 = uk(index(0, num_signals));
+    mv2 = uk(index(1, num_signals));
+    
+    g = mv1 < 0.5 & mv2 < 0.5;
+    r = mv1 >= 0.5 & mv2 >= 0.5;
+    y = mv1 < 0.5 & mv2 >= 0.5;
+    a = mv1 >= 0.5 & mv2 < 0.5;
 
     xk1(g_idx) = (xk(g_idx) + 1) .* g;
     xk1(r_idx) = (xk(r_idx) + 1) .* r;
@@ -22,8 +25,8 @@ function xk1 = StateFn(xk, uk, ...
     xk1(ng_idx) = (xk(ng_idx) + 1) .* (1 - g);
 
     % Queue params
-    c_a = uk(index(4, num_signals));
-    c_d = uk(index(5, num_signals));
+    c_a = uk(index(2, num_signals));
+    c_d = uk(index(3, num_signals));
     q_idx = index(5, num_signals);
     s_idx = index(6, num_signals);
     tq_idx = index(7, num_signals);

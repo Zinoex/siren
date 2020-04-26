@@ -6,29 +6,27 @@ function main(intersection_name)
     Ts = 20;
     nx = 8 * num_signals;
     ny = 3 * num_signals;
-    nu = 6 * num_signals;
-    mvIndex = (1:num_signals *4);
-    mdIndex = (num_signals * 4 + 1:num_signals * 6);
+    mvIndex = (1:num_signals * 2);
+    mdIndex = (num_signals * 2 + 1:num_signals * 4);
     
     nlobj = nlmpc(nx,ny,'MV',mvIndex,'MD',mdIndex)
    
     % Configure MPC
     nlobj.Ts = Ts;
-    nlobj.PredictionHorizon = 10;
-    nlobj.ControlHorizon = 10;
+    nlobj.PredictionHorizon = 30;
+    nlobj.ControlHorizon = 30;
+    nlobj.Model.NumberOfParameters = 6;
     
     nlobj.Model.StateFcn = "StateFn";
     nlobj.Model.IsContinuousTime = false;
+    
     nlobj.Model.OutputFcn = @(x,u,conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, min_green_time_vector, signals) x(5 * num_signals + 1:end);
-    nlobj.Model.NumberOfParameters = 6;
-    nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
-%     Jac_matrix = zeros(3 * num_signals, 8 * num_signals);
-
-    x = 7;
     nlobj.Jacobian.OutputFcn = "OutputJacobian";
+    
+    nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
 
     xk = zeros(nx, 1);
-    mv = [green; red; yellow; amber];
+    mv = [0 1 0 1];
     md = ones(2 * num_signals, 1).';
     md(num_signals + 1:2 * num_signals) = md(num_signals + 1:2 * num_signals) * 5
     
@@ -36,7 +34,7 @@ function main(intersection_name)
     nloptions = nlmpcmoveopt;
     nloptions.Parameters = {conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals};
     [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
-    for i = 1:30
+    for i = 1:10
         [mv, nloptions, info] = nlmpcmove(nlobj, xk, mv, yref, md, nloptions);
         uk = [mv; md'];
         xk = StateFn(xk, uk, ...
