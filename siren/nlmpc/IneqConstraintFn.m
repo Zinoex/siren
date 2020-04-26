@@ -1,5 +1,6 @@
-function cineq = function(X, U, e, data, conflict_matrix, green_interval, yellow_time, amber_time, min_green_time)
-    %%% INPUTS
+function cineq = function(X, U, e, data, ...
+    conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals)
+    %% INPUTS
     % X - State trajectory from time k to k+p
     %     matrix of size (p+1) x N
     % U - Input trajector from time k to k+p

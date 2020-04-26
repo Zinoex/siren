@@ -1,4 +1,5 @@
-function ceq = ConstraintFn(X, U, data, conflict_matrix, green_interval, yellow_time, amber_time, min_green_time)
+function ceq = ConstraintFn(X, U, data, ...
+    conflict_matrix, green_interval_matrix, yellow_time_vector, amber_time_vector, minimum_green_vector, num_signals)
 
     % Sum of lights = 1
     signals = U(:, 1:4 * num_signals);
