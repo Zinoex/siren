@@ -32,7 +32,7 @@ function main(intersection_name)
         nlobj.ManipulatedVariables(i).Max = 1;
     end
     nlobj.Optimization.CustomEqConFcn = "ConstraintFn";
-%     nlobj.Optimization.CustomIneqConFcn = "IneqConstraintFn";
+    nlobj.Optimization.CustomIneqConFcn = "IneqConstraintFn";
 
     % Print parameters after initialization
     nlobj
@@ -64,6 +64,7 @@ function main(intersection_name)
         
         q = xk(5 * num_signals + 1:6 * num_signals)
         lights_current = mv(1:4 * num_signals)
+
     end
 end
 %     for ct = 1:20
