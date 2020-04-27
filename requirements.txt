@@ -1,1 +1,4 @@
 sismic
+gurobipy
+numpy
+scipy
