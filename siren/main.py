@@ -5,7 +5,7 @@ import timeit
 
 model = create_model(intersection, init, arrival_function, departure_function)
 
-#print(timeit.timeit(model.optimize, number=1000))
+#print(timeit.timeit(model.optimize, number=100))
 model.optimize()
 
 for v in model.getVars():
