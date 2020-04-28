@@ -1,5 +1,5 @@
 
-class Intersection:
+class Configuration:
     def __init__(self, num_signals, conflict_matrix, green_interval, yellow_time, amber_time, min_green):
         self.num_signals = num_signals
         self.conflict_matrix = conflict_matrix
@@ -9,7 +9,7 @@ class Intersection:
         self.min_green = min_green
 
 
-class Init:
+class Initialization:
     def __init__(self, lights, timing, queue):
         self.lights = lights
         self.timing = timing
@@ -17,10 +17,15 @@ class Init:
 
 
 class Timing:
-    def __init__(self, green, red, yellow, amber, not_green):
+    def __init__(self, green, yellow, amber, not_green):
         self.green = green
-        self.red = red
         self.yellow = yellow
         self.amber = amber
         self.not_green = not_green
 
+
+class Options:
+    def __init__(self, prediction_horizon=20, queue_weight=1, stops_weight=1):
+        self.prediction_horizon = prediction_horizon
+        self.queue_weight = queue_weight
+        self.stops_weight = stops_weight

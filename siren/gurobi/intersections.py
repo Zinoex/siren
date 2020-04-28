@@ -1,6 +1,4 @@
-from .structures import Init, Intersection, Timing
-
-import gurobipy as gp
+from .structures import Initialization, Configuration, Timing
 
 import numpy as np
 
@@ -13,19 +11,18 @@ def super_simple_departure_function(k, s):
     return 3
 
 
-super_simple_init = Init(
+super_simple_init = Initialization(
     lights=np.array([[0, 1, 0, 0], [0, 1, 0, 0]]),
     timing=Timing(
-        np.array([gp.LinExpr(), gp.LinExpr()]),
-        np.array([gp.LinExpr(), gp.LinExpr()]),
-        np.array([gp.LinExpr(), gp.LinExpr()]),
-        np.array([gp.LinExpr(), gp.LinExpr()]),
-        np.array([gp.LinExpr(5), gp.LinExpr(4)])
+        np.array([0, 0]),
+        np.array([0, 0]),
+        np.array([0, 0]),
+        np.array([9, 2])
     ),
-    queue=np.array([gp.LinExpr(), gp.LinExpr()])
+    queue=np.array([0, 0])
 )
 
-super_simple_intersection = Intersection(
+super_simple_configuration = Configuration(
     2,
     np.array([[0, 1], [1, 0]]),
     np.array([[0, 10], [10, 0]]),
