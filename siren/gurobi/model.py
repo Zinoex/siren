@@ -27,15 +27,12 @@ def queue_evolution(m, colors, init, arr_fn, dep_fn, num_signals, prediction_hor
 
     for k in range(1, prediction_horizon + 1):
         for s in range(num_signals):
-            # TODO: Make sure queue doesn't go negative
-            # qnegative = m.addVar(vtype=GRB.INTEGER, 'qnegative_{}_{}'.format(k, s))
-            # m.addConstr(qnegative <= 0)
-            # qpositive = m.addVar(vtype=GRB.INTEGER, 'qpositive_{}_{}'.format(k, s))
-            # m.addConstr(qpositive >= 0)
+            q_res = m.addVar(vtype=GRB.INTEGER, name='q_res_{}_{}'.format(k, s))
+            m.addConstr(q_res == queue[s] + arr_fn(k, s) - dep_fn(k, s) * (colors[k, s, GREEN] + colors[k, s, YELLOW]))
+            q = m.addVar(vtype=GRB.INTEGER, name='q_{}_{}'.format(k, s))
+            m.addGenConstrMax(q, [q_res], 0)
 
-            #m.addConstr(queue[s] + arr_fn(k, s) - dep_fn(k, s) * (colors[k, s, GREEN] + colors[k, s, YELLOW]) + qnegative + qpositive == 0, 'qresidual_{}_{}'.format(k, s))
-
-            queue[s] += arr_fn(k, s) - dep_fn(k, s) * (colors[k, s, GREEN] + colors[k, s, YELLOW])
+            queue[s] = q
 
             # Objective functions update
             queue_objective.add(queue[s])  # Queue
@@ -105,13 +102,12 @@ def min_green_constraints(m, colors, init, min_green, prediction_horizon, num_si
             # Constrain min green
             now = (1 - colors[k, s, GREEN])
             before = colors[k - 1, s, GREEN]
-            tg_product = logical_product(m, now, before, name='tg_product_{}_{}'.format(k, s))
-
-            m.addConstr(min_green[s] * tg_product - tg[s] <= 0, 'min_green_{}_{}'.format(k, s))
+            m.addConstr(min_green[s] * (now + before) - tg[s] <= min_green[s], 'min_green_{}_{}'.format(k, s))
 
             # Update tg
             tg_aux = m.addVar(vtype=GRB.INTEGER, name='tg_aux_{}_{}'.format(k, s))
-            # m.addConstr(tg_aux <= init.timing.green[s] + prediction_horizon)
+            m.addConstr(tg_aux <= init.timing.green[s] + prediction_horizon)
+            m.addConstr(tg_aux >= 0)
             m.addConstr(tg_aux == tg[s] * (1 - colors[k, s, GREEN]), 'tg_aux_constr_{}_{}'.format(k, s))
 
             tg[s] += colors[k, s, GREEN] - tg_aux
@@ -132,7 +128,8 @@ def amber_time_constraints(m, colors, init, amber_time, prediction_horizon, num_
 
             # Update ta
             ta_aux = m.addVar(vtype=GRB.INTEGER, name='ta_aux_{}_{}'.format(k, s))
-            # m.addConstr(ta_aux <= ma)
+            m.addConstr(ta_aux <= ma)
+            m.addConstr(ta_aux >= 0)
             m.addConstr(ta_aux == ta[s] * now, 'ta_aux_constr_{}_{}'.format(k, s))
 
             ta[s] += colors[k, s, AMBER] - ta_aux
@@ -153,7 +150,8 @@ def yellow_time_constraints(m, colors, init, yellow, prediction_horizon, num_sig
 
             # Update ta
             ty_aux = m.addVar(vtype=GRB.INTEGER, name='ty_aux_{}_{}'.format(k, s))
-            # m.addConstr(ty_aux <= my)
+            m.addConstr(ty_aux <= my)
+            m.addConstr(ty_aux >= 0)
             m.addConstr(ty_aux == ty[s] * now, 'ty_aux_constr_{}_{}'.format(k, s))
 
             ty[s] += colors[k, s, YELLOW] - ty_aux
@@ -173,22 +171,19 @@ def green_interval(m, colors, init, green_interval_matrix, prediction_horizon, n
         for s1 in range(num_signals):
             for s2 in range(num_signals):
                 # Constrain green interval
-                # now = colors[k, s1, GREEN]
-                # before = (1 - colors[k - 1, s1, GREEN])
-                # tng_product = logical_product(m, now, before, name='tng_product_{}_{}_{}'.format(k, s1, s2))
-
                 m.addConstr((green_interval_matrix[s2, s1] - tng[s2]) * colors[k, s1, GREEN] <= 0, 'green_interval_{}_{}_{}'.format(k, s1, s2))
 
         for s in range(num_signals):
             # Update tng
             tng_aux = m.addVar(vtype=GRB.INTEGER, name='tng_aux_{}_{}'.format(k, s))
             m.addConstr(tng_aux <= init.timing.not_green[s] + prediction_horizon)
+            m.addConstr(tng_aux >= 0)
             m.addConstr(tng_aux == tng[s] * colors[k, s, GREEN], 'tng_aux_constr_{}_{}'.format(k, s))
 
             tng[s] += (1 - colors[k, s, GREEN]) - tng_aux
 
 
-def create_model(intersection, init, arr_fn, dep_fn, prediction_horizon=30):
+def create_model(intersection, init, arr_fn, dep_fn, prediction_horizon=20):
     # Create a new model
     m = gp.Model('siren')
     num_signals = intersection.num_signals
