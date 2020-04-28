@@ -35,12 +35,17 @@ class Intersection:
                                                              name='{}_{}_{}'.format(self.color_name[c], k, s))
 
         # Add system dynamics
+        stops_objective = self.stops_evolution(arr_fn)
+
         self.initial_queue = np.empty(self.configuration.num_signals, dtype=object)
         for s in range(self.configuration.num_signals):
-            self.initial_queue[s] = gp.LinExpr(
-                init.queue[s])
-        queue_objective = self.queue_evolution(arr_fn, dep_fn)
-        stops_objective = self.stops_evolution(arr_fn)
+            self.initial_queue[s] = gp.LinExpr(init.queue[s])
+        queue_objective, queue_notempty = self.queue_evolution(arr_fn, dep_fn)
+
+        self.initial_wait_time = np.empty(self.configuration.num_signals, dtype=object)
+        for s in range(self.configuration.num_signals):
+            self.initial_wait_time[s] = gp.LinExpr(init.timing.wait[s])
+        wait_objective = self.wait_time_evolution(queue_notempty)
 
         # Add constraints
         self.single_light_constraints()
@@ -49,6 +54,7 @@ class Intersection:
         self.red_transition_constraints()
         self.yellow_transition_constraints()
         self.amber_transition_constraints()
+        self.control_horizon_constraints()
 
         # Add initial timing dependent constraints
         self.initial_green = np.empty(self.configuration.num_signals, dtype=object)
@@ -68,8 +74,7 @@ class Intersection:
 
         self.initial_notgreen = np.empty(self.configuration.num_signals, dtype=object)
         for s in range(self.configuration.num_signals):
-            self.initial_notgreen[s] = gp.LinExpr(
-                init.timing.not_green[s])
+            self.initial_notgreen[s] = gp.LinExpr(init.timing.not_green[s])
         self.green_interval()
 
         self.initial_light_constraints(init)
@@ -77,7 +82,8 @@ class Intersection:
         # Set object function
         self.model.setObjective(
             self.options.queue_weight * queue_objective +
-            self.options.stops_weight * stops_objective,
+            self.options.stops_weight * stops_objective +
+            self.options.wait_weight * wait_objective,
             GRB.MINIMIZE)
 
     def optimize(self):
@@ -95,52 +101,57 @@ class Intersection:
         queue = self.initial_queue
         objective = gp.LinExpr()
 
+        queue_notempty = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
+
         for k in range(1, self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 q_res = queue[s] + arr_fn(k, s) - dep_fn(k, s) * (
                             self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW])
 
-                q = self.model.addVar(vtype=GRB.INTEGER, name='q_{}_{}'.format(k, s))
+                q = self.model.addVar(vtype=GRB.BINARY, name='q_{}_{}'.format(k, s))
                 self.model.addGenConstrIndicator(q, False, q_res <= 0, name='q_residual_{}_{}'.format(k, s))
                 q_prime = self.model.addVar(vtype=GRB.INTEGER, name='q_prime_{}_{}'.format(k, s))
                 self.model.addConstr(q_prime == q * q_res)
 
                 queue[s] = q_prime
+                queue_notempty[k - 1, s] = q
 
-                # Objective functions update
-                objective.add(queue[s])  # Queue
+                # Update objective function
+                objective.add(queue[s])
 
-        return objective
+        return objective, queue_notempty
 
     def stops_evolution(self, arr_fn):
         objective = gp.LinExpr()
 
         for k in range(1, self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
-                objective.add(arr_fn(k, s) * (self.colors[k, s, self.RED] + self.colors[k, s, self.AMBER]))  # Stops
+                objective.add(arr_fn(k, s) * (self.colors[k, s, self.RED] + self.colors[k, s, self.AMBER]))
 
         return objective
 
-    # def wait_time_evolution(self, arr_fn, dep_fn):
-    #     queue = self.initial_queue
-    #     objective = gp.LinExpr()
-    #
-    #     for k in range(1, self.options.prediction_horizon + 1):
-    #         for s in range(self.configuration.num_signals):
-    #             q_res = queue[s] + arr_fn(k, s) - dep_fn(k, s) * (
-    #                         self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW])
-    #
-    #             q = self.model.addVar(vtype=GRB.INTEGER, name='q_{}_{}'.format(k, s))
-    #             self.model.addGenConstrIndicator(q, False, q_res <= 0, name='q_residual_{}_{}'.format(k, s))
-    #             q_prime = self.model.addVar(vtype=GRB.INTEGER, name='q_prime_{}_{}'.format(k, s))
-    #             self.model.addConstr(q_prime == q * q_res)
-    #
-    #             queue[s] = q_prime
-    #
-    #             # Objective functions update
-    #             objective.add(queue[s])  # Queue
-    #
-    #     return objective
+    def wait_time_evolution(self, queue_notempty):
+        tq = self.initial_wait_time
+        objective = gp.LinExpr()
+
+        for k in range(1, self.options.prediction_horizon + 1):
+            for s in range(self.configuration.num_signals):
+                q_notempty = queue_notempty[k - 1, s]
+
+                request = self.model.addVar(vtype=GRB.BINARY, name='request_{}_{}'.format(k, s))
+                self.model.addConstr(request == q_notempty * (1 - self.colors[k, s, self.GREEN]), 'request_cons_{}_{}'.format(k, s))
+
+                tq_aux = self.model.addVar(vtype=GRB.INTEGER, name='tq_aux_{}_{}'.format(k, s))
+                self.model.addConstr(tq_aux <= self.initial_wait_time[s] + self.options.prediction_horizon)
+                self.model.addConstr(tq_aux >= 0)
+                self.model.addConstr(tq_aux == tq[s] * (1 - request), 'tq_aux_constr_{}_{}'.format(k, s))
+
+                tq[s] += request - tq_aux
+
+                # Update objective function
+                objective.add(tq[s])
+
+        return objective
 
     #########################
     # General constraints
@@ -194,6 +205,12 @@ class Intersection:
 
     def amber_transition_constraints(self):
         self.intermediate_transition_constraints(self.AMBER, self.YELLOW, self.RED)
+
+    def control_horizon_constraints(self):
+        for k in range(self.options.control_horizon + 1, self.options.prediction_horizon):
+            for s in range(self.configuration.num_signals):
+                for c in range(self.num_colors):
+                    self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c], 'control_horizon_{}_{}_{}'.format(k, s, c))
 
     #########################################
     # Initial timing dependent constraints
