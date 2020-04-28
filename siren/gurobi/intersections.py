@@ -10,7 +10,7 @@ def super_simple_arrival_function(k, s):
 
 
 def super_simple_departure_function(k, s):
-    return 1
+    return 3
 
 
 super_simple_init = Init(
@@ -20,7 +20,7 @@ super_simple_init = Init(
         np.array([gp.LinExpr(), gp.LinExpr()]),
         np.array([gp.LinExpr(), gp.LinExpr()]),
         np.array([gp.LinExpr(), gp.LinExpr()]),
-        np.array([gp.LinExpr(), gp.LinExpr()])
+        np.array([gp.LinExpr(5), gp.LinExpr(4)])
     ),
     queue=np.array([gp.LinExpr(), gp.LinExpr()])
 )

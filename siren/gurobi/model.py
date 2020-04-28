@@ -22,23 +22,23 @@ color_name = {
 def queue_evolution(m, colors, init, arr_fn, dep_fn, num_signals, prediction_horizon):
 
     queue = init.queue
-    queue_objective = gp.LinExpr()
-    stops_objective = gp.LinExpr()
+    objective = gp.QuadExpr()
 
     for k in range(1, prediction_horizon + 1):
         for s in range(num_signals):
             q_res = m.addVar(vtype=GRB.INTEGER, name='q_res_{}_{}'.format(k, s))
-            m.addConstr(q_res == queue[s] + arr_fn(k, s) - dep_fn(k, s) * (colors[k, s, GREEN] + colors[k, s, YELLOW]))
+            m.addConstr(q_res == queue[s] + arr_fn(k, s) - dep_fn(k, s) * (colors[k, s, GREEN] + colors[k, s, YELLOW]), 'q_residual_{}_{}'.format(k, s))
             q = m.addVar(vtype=GRB.INTEGER, name='q_{}_{}'.format(k, s))
-            m.addGenConstrMax(q, [q_res], 0)
+            m.addGenConstrMax(q, [q_res], 0, 'q_positive_{}_{}'.format(k, s))
 
             queue[s] = q
 
             # Objective functions update
-            queue_objective.add(queue[s])  # Queue
-            stops_objective.add(arr_fn(k, s) * (colors[k, s, RED] + colors[k, s, YELLOW]))  # Stops
+            objective.add(q)  # Queue
+            objective.add(arr_fn(k, s) * (colors[k, s, RED] + colors[k, s, AMBER]))  # Stops
+            objective.add(50 * colors[k, s, RED])  # Prefer not red
 
-    return queue_objective, stops_objective
+    return objective
 
 
 def initial_light_constraints(m, colors, init, num_signals):
@@ -124,7 +124,7 @@ def amber_time_constraints(m, colors, init, amber_time, prediction_horizon, num_
             before = colors[k - 1, s, AMBER]
             ta_product = logical_product(m, now, before, name='ta_product_{}_{}'.format(k, s))
 
-            m.addConstr((amber_time[s] - ta[s]) * ta_product == 0, 'amber_time_{}_{}'.format(k, s))
+            m.addConstr((amber_time[s] - ta[s]) * ta_product == 0, 'amber_time_max_{}_{}'.format(k, s))
 
             # Update ta
             ta_aux = m.addVar(vtype=GRB.INTEGER, name='ta_aux_{}_{}'.format(k, s))
@@ -134,10 +134,12 @@ def amber_time_constraints(m, colors, init, amber_time, prediction_horizon, num_
 
             ta[s] += colors[k, s, AMBER] - ta_aux
 
+            m.addConstr(amber_time[s] * colors[k, s, AMBER] >= ta[s], 'amber_time_min_{}_{}'.format(k, s))
 
-def yellow_time_constraints(m, colors, init, yellow, prediction_horizon, num_signals):
+
+def yellow_time_constraints(m, colors, init, yellow_time, prediction_horizon, num_signals):
     ty = init.timing.yellow
-    my = max(yellow)
+    my = max(yellow_time)
 
     for k in range(1, prediction_horizon + 1):
         for s in range(num_signals):
@@ -146,7 +148,7 @@ def yellow_time_constraints(m, colors, init, yellow, prediction_horizon, num_sig
             before = colors[k - 1, s, YELLOW]
             ty_product = logical_product(m, now, before, name='ty_product_{}_{}'.format(k, s))
 
-            m.addConstr((yellow[s] - ty[s]) * ty_product == 0, 'yellow_time_{}_{}'.format(k, s))
+            m.addConstr((yellow_time[s] - ty[s]) * ty_product == 0, 'yellow_time_max_{}_{}'.format(k, s))
 
             # Update ta
             ty_aux = m.addVar(vtype=GRB.INTEGER, name='ty_aux_{}_{}'.format(k, s))
@@ -155,6 +157,8 @@ def yellow_time_constraints(m, colors, init, yellow, prediction_horizon, num_sig
             m.addConstr(ty_aux == ty[s] * now, 'ty_aux_constr_{}_{}'.format(k, s))
 
             ty[s] += colors[k, s, YELLOW] - ty_aux
+
+            m.addConstr(yellow_time[s] * colors[k, s, YELLOW] >= ty[s], 'yellow_time_min_{}_{}'.format(k, s))
 
 
 def logical_product(m, x1, x2, name=''):
@@ -168,11 +172,6 @@ def green_interval(m, colors, init, green_interval_matrix, prediction_horizon, n
     tng = init.timing.not_green
 
     for k in range(1, prediction_horizon + 1):
-        for s1 in range(num_signals):
-            for s2 in range(num_signals):
-                # Constrain green interval
-                m.addConstr((green_interval_matrix[s2, s1] - tng[s2]) * colors[k, s1, GREEN] <= 0, 'green_interval_{}_{}_{}'.format(k, s1, s2))
-
         for s in range(num_signals):
             # Update tng
             tng_aux = m.addVar(vtype=GRB.INTEGER, name='tng_aux_{}_{}'.format(k, s))
@@ -181,6 +180,11 @@ def green_interval(m, colors, init, green_interval_matrix, prediction_horizon, n
             m.addConstr(tng_aux == tng[s] * colors[k, s, GREEN], 'tng_aux_constr_{}_{}'.format(k, s))
 
             tng[s] += (1 - colors[k, s, GREEN]) - tng_aux
+
+        for s1 in range(num_signals):
+            for s2 in range(num_signals):
+                # Constrain green interval
+                m.addConstr((green_interval_matrix[s2, s1] - tng[s2]) * colors[k, s1, GREEN] <= 0, 'green_interval_{}_{}_{}'.format(k, s1, s2))
 
 
 def create_model(intersection, init, arr_fn, dep_fn, prediction_horizon=20):
@@ -196,7 +200,7 @@ def create_model(intersection, init, arr_fn, dep_fn, prediction_horizon=20):
                 colors[k, s, c] = m.addVar(vtype=GRB.BINARY, name='{}_{}_{}'.format(color_name[c], k, s))
 
     # Add system dynamics
-    queue_objective, stops_objective = queue_evolution(m, colors, init, arr_fn, dep_fn, num_signals, prediction_horizon)
+    objective = queue_evolution(m, colors, init, arr_fn, dep_fn, num_signals, prediction_horizon)
 
     # Add constraints
     initial_light_constraints(m, colors, init, num_signals)
@@ -212,7 +216,6 @@ def create_model(intersection, init, arr_fn, dep_fn, prediction_horizon=20):
     green_interval(m, colors, init, intersection.green_interval, prediction_horizon, num_signals)
 
     # Set object function
-    m.setObjectiveN(queue_objective, 0)
-    m.setObjectiveN(stops_objective, 1)
+    m.setObjective(objective, GRB.MINIMIZE)
 
     return m
