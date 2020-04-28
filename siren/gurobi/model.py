@@ -54,6 +54,7 @@ class Intersection:
         self.red_transition_constraints()
         self.yellow_transition_constraints()
         self.amber_transition_constraints()
+        self.control_horizon_constraints()
 
         # Add initial timing dependent constraints
         self.initial_green = np.empty(self.configuration.num_signals, dtype=object)
@@ -204,6 +205,12 @@ class Intersection:
 
     def amber_transition_constraints(self):
         self.intermediate_transition_constraints(self.AMBER, self.YELLOW, self.RED)
+
+    def control_horizon_constraints(self):
+        for k in range(self.options.control_horizon + 1, self.options.prediction_horizon):
+            for s in range(self.configuration.num_signals):
+                for c in range(self.num_colors):
+                    self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c], 'control_horizon_{}_{}_{}'.format(k, s, c))
 
     #########################################
     # Initial timing dependent constraints
