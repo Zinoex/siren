@@ -17,15 +17,17 @@ class Initialization:
 
 
 class Timing:
-    def __init__(self, green, yellow, amber, not_green):
+    def __init__(self, green, yellow, amber, not_green, wait):
         self.green = green
         self.yellow = yellow
         self.amber = amber
         self.not_green = not_green
+        self.wait = wait
 
 
 class Options:
-    def __init__(self, prediction_horizon=20, queue_weight=1, stops_weight=1):
+    def __init__(self, prediction_horizon=20, queue_weight=1, stops_weight=1, wait_weight=3):
         self.prediction_horizon = prediction_horizon
         self.queue_weight = queue_weight
         self.stops_weight = stops_weight
+        self.wait_weight = wait_weight
