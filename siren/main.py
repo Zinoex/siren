@@ -7,12 +7,12 @@ import timeit
 
 def test():
     model = Intersection(configuration, Options(), arrival_function, departure_function, init)
-    model.optimize()
+    model.optimize(verbose=True)
 
 
-print(timeit.timeit(test, number=10))
+print(timeit.timeit(test, number=1))
 
 # model = Intersection(configuration, Options(), arrival_function, departure_function, init)
-# model.optimize()
+# model.optimize(verbose=True)
 # colors = model.get_colors()
 # print(colors)
