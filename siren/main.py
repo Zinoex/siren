@@ -4,8 +4,15 @@ from gurobi.structures import Options
 
 import timeit
 
-model = Intersection(configuration, Options(), arrival_function, departure_function, init)
+
+def test():
+    model = Intersection(configuration, Options(), arrival_function, departure_function, init)
+    model.optimize()
 
 
-print(timeit.timeit(model.optimize, number=1))
+print(timeit.timeit(test, number=10))
+
+# model = Intersection(configuration, Options(), arrival_function, departure_function, init)
 # model.optimize()
+# colors = model.get_colors()
+# print(colors)

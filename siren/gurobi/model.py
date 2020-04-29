@@ -60,24 +60,29 @@ class Intersection:
         self.initial_green = np.empty(self.configuration.num_signals, dtype=object)
         for s in range(self.configuration.num_signals):
             self.initial_green[s] = gp.LinExpr(init.timing.green[s])
-        self.min_green_constraints()
+        tg_history = self.min_green_constraints()
 
         self.initial_amber = np.empty(self.configuration.num_signals, dtype=object)
         for s in range(self.configuration.num_signals):
             self.initial_amber[s] = gp.LinExpr(init.timing.amber[s])
-        self.amber_time_constraints()
+        ta_history = self.amber_time_constraints()
 
         self.initial_yellow = np.empty(self.configuration.num_signals, dtype=object)
         for s in range(self.configuration.num_signals):
             self.initial_yellow[s] = gp.LinExpr(init.timing.yellow[s])
-        self.yellow_time_constraints()
+        ty_history = self.yellow_time_constraints()
 
         self.initial_notgreen = np.empty(self.configuration.num_signals, dtype=object)
         for s in range(self.configuration.num_signals):
             self.initial_notgreen[s] = gp.LinExpr(init.timing.not_green[s])
-        self.green_interval()
+        tng_history = self.green_interval()
 
         self.initial_light_constraints(init)
+
+        # Additional constraints to speed up the execution
+        for k in range(self.options.prediction_horizon):
+            for s in range(self.configuration.num_signals):
+                self.model.addConstr(ta_history[k, s] + ty_history[k, s] <= tng_history[k, s])
 
         # Set object function
         self.model.setObjective(
@@ -86,13 +91,32 @@ class Intersection:
             self.options.wait_weight * wait_objective,
             GRB.MINIMIZE)
 
-    def optimize(self):
+        # Reduces execution time by 40%
+        self.model.Params.PreDual = 1
+        self.model.Params.Quad = 0
+        self.model.Params.MIPGap = 0.1
+        self.model.Params.TimeLimit = 2
+
+    def optimize(self, verbose=False):
+        # self.model.tune()
+        #
+        # if self.model.tuneResultCount > 0:
+        #     # Load the best tuned parameters into the model
+        #     self.model.getTuneResult(0)
+
         self.model.optimize()
 
-        for v in self.model.getVars():
-            print('%s %g' % (v.varName, v.x))
+        if verbose:
+            for v in self.model.getVars():
+                print('%s %g' % (v.varName, v.x))
 
-        print('Obj: %g' % self.model.objVal)
+            print('Obj: %g' % self.model.objVal)
+
+    def get_colors(self, k=1):
+        def select_value(color):
+            return color.x
+
+        return np.vectorize(select_value)(self.colors[k, :, :])
 
     #####################
     # System dynamics
@@ -138,15 +162,16 @@ class Intersection:
             for s in range(self.configuration.num_signals):
                 q_notempty = queue_notempty[k - 1, s]
 
-                request = self.model.addVar(vtype=GRB.BINARY, name='request_{}_{}'.format(k, s))
-                self.model.addConstr(request == q_notempty * (1 - self.colors[k, s, self.GREEN]), 'request_cons_{}_{}'.format(k, s))
+                request = self.logical_product(q_notempty, (1 - self.colors[k, s, self.GREEN]), name='request_{}_{}'.format(k, s))
 
                 tq_aux = self.model.addVar(vtype=GRB.INTEGER, name='tq_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tq_aux <= self.initial_wait_time[s] + self.options.prediction_horizon)
+                self.model.addConstr(tq_aux <= self.initial_wait_time[s] + self.options.prediction_horizon + 1 - k)
                 self.model.addConstr(tq_aux >= 0)
                 self.model.addConstr(tq_aux == tq[s] * (1 - request), 'tq_aux_constr_{}_{}'.format(k, s))
 
                 tq[s] += request - tq_aux
+                self.model.addConstr(tq[s] <= self.initial_wait_time[s] + self.options.prediction_horizon + 1 - k)
+                self.model.addConstr(tq[s] >= 0)
 
                 # Update objective function
                 objective.add(tq[s])
@@ -169,7 +194,7 @@ class Intersection:
             for s1 in range(self.configuration.num_signals):
                 for s2 in range(self.configuration.num_signals):
                     self.model.addConstr(self.configuration.conflict_matrix[s1, s2] * (
-                                self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1,
+                            self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1,
                                          'conflict_{}_{}_{}'.format(k, s1, s2))
 
     def stable_light_transition_constraint(self, stable, after_not, after_zero, after_positive, timing):
@@ -210,42 +235,48 @@ class Intersection:
         for k in range(self.options.control_horizon + 1, self.options.prediction_horizon):
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
-                    self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c], 'control_horizon_{}_{}_{}'.format(k, s, c))
+                    self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c],
+                                         'control_horizon_{}_{}_{}'.format(k, s, c))
 
     #########################################
     # Initial timing dependent constraints
     #########################################
     def min_green_constraints(self):
         tg = self.initial_green
+        tg_history = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
 
         for k in range(1, self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 # Constrain min green
-                now = (1 - self.colors[k, s, self.GREEN])
-                before = self.colors[k - 1, s, self.GREEN]
                 self.model.addConstr(
-                    self.configuration.min_green[s] * (now + before - 1) <= tg[s],
+                    self.configuration.min_green[s] * (self.colors[k - 1, s, self.GREEN] - self.colors[k, s, self.GREEN]) <= tg[s],
                     'min_green_{}_{}'.format(k, s))
 
                 # Update tg
                 tg_aux = self.model.addVar(vtype=GRB.INTEGER, name='tg_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tg_aux <= self.initial_green[s] + self.options.prediction_horizon)
+                self.model.addConstr(tg_aux <= self.initial_green[s] + self.options.prediction_horizon + 1 - k)
                 self.model.addConstr(tg_aux >= 0)
                 self.model.addConstr(tg_aux == tg[s] * (1 - self.colors[k, s, self.GREEN]),
                                      'tg_aux_constr_{}_{}'.format(k, s))
 
                 tg[s] += self.colors[k, s, self.GREEN] - tg_aux
+                self.model.addConstr(tg[s] <= self.initial_green[s] + self.options.prediction_horizon + 1 - k)
+                self.model.addConstr(tg[s] >= 0)
+
+                tg_history[k - 1, s] = tg[s]
+
+        return tg_history
 
     def amber_time_constraints(self):
         ta = self.initial_amber
         ma = max(self.configuration.amber_time)
 
+        ta_history = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
+
         for k in range(1, self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 # Constrain amber time
-                now = (1 - self.colors[k, s, self.AMBER])
-                before = self.colors[k - 1, s, self.AMBER]
-                ta_product = self.logical_product(now, before, name='ta_product_{}_{}'.format(k, s))
+                ta_product = self.logical_product((1 - self.colors[k, s, self.AMBER]), self.colors[k - 1, s, self.AMBER], name='ta_product_{}_{}'.format(k, s))
 
                 self.model.addConstr((self.configuration.amber_time[s] - ta[s]) * ta_product == 0,
                                      'amber_time_max_{}_{}'.format(k, s))
@@ -254,23 +285,29 @@ class Intersection:
                 ta_aux = self.model.addVar(vtype=GRB.INTEGER, name='ta_aux_{}_{}'.format(k, s))
                 self.model.addConstr(ta_aux <= ma)
                 self.model.addConstr(ta_aux >= 0)
-                self.model.addConstr(ta_aux == ta[s] * now, 'ta_aux_constr_{}_{}'.format(k, s))
+                self.model.addConstr(ta_aux == ta[s] * (1 - self.colors[k, s, self.AMBER]), 'ta_aux_constr_{}_{}'.format(k, s))
 
                 ta[s] += self.colors[k, s, self.AMBER] - ta_aux
+                self.model.addConstr(ta[s] <= ma)
+                self.model.addConstr(ta[s] >= 0)
 
                 self.model.addConstr(self.configuration.amber_time[s] * self.colors[k, s, self.AMBER] >= ta[s],
                                      'amber_time_min_{}_{}'.format(k, s))
+
+                ta_history[k - 1, s] = ta[s]
+
+        return ta_history
 
     def yellow_time_constraints(self):
         ty = self.initial_yellow
         my = max(self.configuration.yellow_time)
 
+        ty_history = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
+
         for k in range(1, self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 # Constrain amber time
-                now = (1 - self.colors[k, s, self.YELLOW])
-                before = self.colors[k - 1, s, self.YELLOW]
-                ty_product = self.logical_product(now, before, name='ty_product_{}_{}'.format(k, s))
+                ty_product = self.logical_product((1 - self.colors[k, s, self.YELLOW]), self.colors[k - 1, s, self.YELLOW], name='ty_product_{}_{}'.format(k, s))
 
                 self.model.addConstr((self.configuration.yellow_time[s] - ty[s]) * ty_product == 0,
                                      'yellow_time_max_{}_{}'.format(k, s))
@@ -279,21 +316,31 @@ class Intersection:
                 ty_aux = self.model.addVar(vtype=GRB.INTEGER, name='ty_aux_{}_{}'.format(k, s))
                 self.model.addConstr(ty_aux <= my)
                 self.model.addConstr(ty_aux >= 0)
-                self.model.addConstr(ty_aux == ty[s] * now, 'ty_aux_constr_{}_{}'.format(k, s))
+                self.model.addConstr(ty_aux == ty[s] * (1 - self.colors[k, s, self.YELLOW]), 'ty_aux_constr_{}_{}'.format(k, s))
 
                 ty[s] += self.colors[k, s, self.YELLOW] - ty_aux
+                self.model.addConstr(ty[s] <= my)
+                self.model.addConstr(ty[s] >= 0)
 
                 self.model.addConstr(self.configuration.yellow_time[s] * self.colors[k, s, self.YELLOW] >= ty[s],
                                      'yellow_time_min_{}_{}'.format(k, s))
 
+                ty_history[k - 1, s] = ty[s]
+
+        return ty_history
+
     def logical_product(self, x1, x2, name=''):
         product = self.model.addVar(vtype=GRB.BINARY, name=name)
-        self.model.addConstr(product == x1 * x2)
+        self.model.addConstr(product - x1 <= 0)
+        self.model.addConstr(product - x2 <= 0)
+        self.model.addConstr(x1 + x2 - product <= 1)
 
         return product
 
     def green_interval(self):
         tng = self.initial_notgreen
+
+        tng_history = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
 
         for k in range(1, self.options.prediction_horizon + 1):
             for s1 in range(self.configuration.num_signals):
@@ -306,12 +353,18 @@ class Intersection:
             for s in range(self.configuration.num_signals):
                 # Update tng
                 tng_aux = self.model.addVar(vtype=GRB.INTEGER, name='tng_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tng_aux <= self.initial_notgreen[s] + self.options.prediction_horizon)
+                self.model.addConstr(tng_aux <= self.initial_notgreen[s] + self.options.prediction_horizon + 1 - k)
                 self.model.addConstr(tng_aux >= 0)
                 self.model.addConstr(tng_aux == tng[s] * self.colors[k, s, self.GREEN],
                                      'tng_aux_constr_{}_{}'.format(k, s))
 
                 tng[s] += (1 - self.colors[k, s, self.GREEN]) - tng_aux
+                self.model.addConstr(tng[s] <= self.initial_notgreen[s] + self.options.prediction_horizon + 1 - k)
+                self.model.addConstr(tng[s] >= 0)
+
+                tng_history[k - 1, s] = tng[s]
+
+        return tng_history
 
     ##########################
     # Initial constraints
