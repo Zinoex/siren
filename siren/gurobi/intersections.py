@@ -17,10 +17,10 @@ super_simple_init = Initialization(
         np.array([0, 0]),
         np.array([0, 0]),
         np.array([0, 0]),
-        np.array([9, 2]),
-        np.array([2, 0])
+        np.array([10, 22]),
+        np.array([6, 15])
     ),
-    queue=np.array([1, 0])
+    queue=np.array([3, 12])
 )
 
 super_simple_configuration = Configuration(

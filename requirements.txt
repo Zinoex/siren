@@ -2,3 +2,4 @@ sismic
 gurobipy
 numpy
 scipy
+traci

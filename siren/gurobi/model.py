@@ -28,11 +28,18 @@ class Intersection:
         # Create light variables
         self.colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
                                dtype=object)
+        self.notcolors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
+                               dtype=object)
         for k in range(self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
                     self.colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
                                                              name='{}_{}_{}'.format(self.color_name[c], k, s))
+                    self.notcolors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
+                                                             name='not_{}_{}_{}'.format(self.color_name[c], k, s))
+                    self.model.addConstr(self.notcolors[k, s, c] == 1 - self.colors[k, s, c])
+
+                    # TODO: Try notcolors as a potential speedup optimization
 
         # Add system dynamics
         stops_objective = self.stops_evolution(arr_fn)
@@ -86,38 +93,56 @@ class Intersection:
             self.options.wait_weight * wait_objective,
             GRB.MINIMIZE)
 
-    def optimize(self):
+    def optimize(self, verbose=False):
+        # self.model.tune()
+        #
+        # if self.model.tuneResultCount > 0:
+        #     # Load the best tuned parameters into the model
+        #     self.model.getTuneResult(0)
+
         self.model.optimize()
 
-        for v in self.model.getVars():
-            print('%s %g' % (v.varName, v.x))
+        if verbose:
+            for v in self.model.getVars():
+                print('%s %g' % (v.varName, v.x))
 
-        print('Obj: %g' % self.model.objVal)
+            print('Obj: %g' % self.model.objVal)
+
+    def get_colors(self, k=1):
+        def select_value(color):
+            return color.x
+
+        return np.vectorize(select_value)(self.colors[k, :, :])
 
     #####################
     # System dynamics
     #####################
     def queue_evolution(self, arr_fn, dep_fn):
-        queue = self.initial_queue
         objective = gp.LinExpr()
 
         queue_notempty = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
 
-        for k in range(1, self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                q_res = queue[s] + arr_fn(k, s) - dep_fn(k, s) * (
-                            self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW])
+        for s in range(self.configuration.num_signals):
+            queue = self.initial_queue[s]
+            for k in range(1, self.options.prediction_horizon + 1):
+
+
+                q_res = queue + arr_fn(k, s) - dep_fn(k, s) * (
+                        self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW])
+                # q_res2 = self.model.addVar(vtype=GRB.INTEGER, name='q_res_{}_{}'.format(k, s))
+                # self.model.addConstr(q_res2 == q_res)
 
                 q = self.model.addVar(vtype=GRB.BINARY, name='q_{}_{}'.format(k, s))
                 self.model.addGenConstrIndicator(q, False, q_res <= 0, name='q_residual_{}_{}'.format(k, s))
+
                 q_prime = self.model.addVar(vtype=GRB.INTEGER, name='q_prime_{}_{}'.format(k, s))
                 self.model.addConstr(q_prime == q * q_res)
 
-                queue[s] = q_prime
+                queue = q_prime
                 queue_notempty[k - 1, s] = q
 
                 # Update objective function
-                objective.add(queue[s])
+                objective.add(queue)
 
         return objective, queue_notempty
 
@@ -131,25 +156,22 @@ class Intersection:
         return objective
 
     def wait_time_evolution(self, queue_notempty):
-        tq = self.initial_wait_time
         objective = gp.LinExpr()
 
-        for k in range(1, self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
+        for s in range(self.configuration.num_signals):
+            tq = self.initial_wait_time[s]
+            for k in range(1, self.options.prediction_horizon + 1):
                 q_notempty = queue_notempty[k - 1, s]
 
-                request = self.model.addVar(vtype=GRB.BINARY, name='request_{}_{}'.format(k, s))
-                self.model.addConstr(request == q_notempty * (1 - self.colors[k, s, self.GREEN]), 'request_cons_{}_{}'.format(k, s))
+                request = self.logical_product(self.notcolors[k, s, self.GREEN], q_notempty, name='request_{}_{}'.format(k, s))
 
                 tq_aux = self.model.addVar(vtype=GRB.INTEGER, name='tq_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tq_aux <= self.initial_wait_time[s] + self.options.prediction_horizon)
-                self.model.addConstr(tq_aux >= 0)
-                self.model.addConstr(tq_aux == tq[s] * (1 - request), 'tq_aux_constr_{}_{}'.format(k, s))
+                self.model.addConstr(tq_aux == (tq + 1) * request, 'tq_aux_constr_{}_{}'.format(k, s))
 
-                tq[s] += request - tq_aux
+                tq = tq_aux
 
                 # Update objective function
-                objective.add(tq[s])
+                objective.add(tq)
 
         return objective
 
@@ -162,14 +184,14 @@ class Intersection:
                 self.model.addConstr(self.colors[k, s, :].sum() == 1, 'color_sum_{}_{}'.format(k, s))
 
     def nonblocking(self, k, s):
-        return self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW] + self.colors[k, s, self.AMBER]
+        return self.notcolors[k, s, self.RED]
 
     def conflict_constraints(self):
         for k in range(self.options.prediction_horizon + 1):
             for s1 in range(self.configuration.num_signals):
                 for s2 in range(self.configuration.num_signals):
                     self.model.addConstr(self.configuration.conflict_matrix[s1, s2] * (
-                                self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1,
+                            self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1,
                                          'conflict_{}_{}_{}'.format(k, s1, s2))
 
     def stable_light_transition_constraint(self, stable, after_not, after_zero, after_positive, timing):
@@ -210,108 +232,113 @@ class Intersection:
         for k in range(self.options.control_horizon + 1, self.options.prediction_horizon):
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
-                    self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c], 'control_horizon_{}_{}_{}'.format(k, s, c))
+                    self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c],
+                                         'control_horizon_{}_{}_{}'.format(k, s, c))
 
     #########################################
     # Initial timing dependent constraints
     #########################################
     def min_green_constraints(self):
-        tg = self.initial_green
-
-        for k in range(1, self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
+        for s in range(self.configuration.num_signals):
+            tg = self.initial_green[s]
+            for k in range(1, self.options.prediction_horizon + 1):
                 # Constrain min green
-                now = (1 - self.colors[k, s, self.GREEN])
-                before = self.colors[k - 1, s, self.GREEN]
                 self.model.addConstr(
-                    self.configuration.min_green[s] * (now + before - 1) <= tg[s],
+                    self.configuration.min_green[s] * (
+                                self.colors[k - 1, s, self.GREEN] - self.colors[k, s, self.GREEN]) <= tg,
                     'min_green_{}_{}'.format(k, s))
 
                 # Update tg
                 tg_aux = self.model.addVar(vtype=GRB.INTEGER, name='tg_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tg_aux <= self.initial_green[s] + self.options.prediction_horizon)
+                self.model.addConstr(tg_aux <= self.initial_green[s] + self.options.prediction_horizon + 1 - k)
                 self.model.addConstr(tg_aux >= 0)
-                self.model.addConstr(tg_aux == tg[s] * (1 - self.colors[k, s, self.GREEN]),
+                self.model.addConstr(tg_aux == (tg + 1) * self.colors[k, s, self.GREEN],
                                      'tg_aux_constr_{}_{}'.format(k, s))
 
-                tg[s] += self.colors[k, s, self.GREEN] - tg_aux
+                tg = tg_aux
 
     def amber_time_constraints(self):
-        ta = self.initial_amber
         ma = max(self.configuration.amber_time)
 
-        for k in range(1, self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
+        for s in range(self.configuration.num_signals):
+            ta = self.initial_amber[s]
+            for k in range(1, self.options.prediction_horizon + 1):
                 # Constrain amber time
-                now = (1 - self.colors[k, s, self.AMBER])
-                before = self.colors[k - 1, s, self.AMBER]
-                ta_product = self.logical_product(now, before, name='ta_product_{}_{}'.format(k, s))
+                ta_product = self.logical_product(self.notcolors[k, s, self.AMBER],
+                                                  self.colors[k - 1, s, self.AMBER],
+                                                  name='ta_product_{}_{}'.format(k, s))
 
-                self.model.addConstr((self.configuration.amber_time[s] - ta[s]) * ta_product == 0,
+                self.model.addConstr((self.configuration.amber_time[s] - ta) * ta_product == 0,
                                      'amber_time_max_{}_{}'.format(k, s))
 
                 # Update ta
                 ta_aux = self.model.addVar(vtype=GRB.INTEGER, name='ta_aux_{}_{}'.format(k, s))
                 self.model.addConstr(ta_aux <= ma)
                 self.model.addConstr(ta_aux >= 0)
-                self.model.addConstr(ta_aux == ta[s] * now, 'ta_aux_constr_{}_{}'.format(k, s))
+                self.model.addConstr(ta_aux == (ta + 1) * self.colors[k, s, self.AMBER],
+                                     'ta_aux_constr_{}_{}'.format(k, s))
 
-                ta[s] += self.colors[k, s, self.AMBER] - ta_aux
+                ta = ta_aux
 
-                self.model.addConstr(self.configuration.amber_time[s] * self.colors[k, s, self.AMBER] >= ta[s],
+                self.model.addConstr(self.configuration.amber_time[s] * self.colors[k, s, self.AMBER] >= ta,
                                      'amber_time_min_{}_{}'.format(k, s))
 
     def yellow_time_constraints(self):
-        ty = self.initial_yellow
         my = max(self.configuration.yellow_time)
 
-        for k in range(1, self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
+        for s in range(self.configuration.num_signals):
+            ty = self.initial_yellow[s]
+            for k in range(1, self.options.prediction_horizon + 1):
                 # Constrain amber time
-                now = (1 - self.colors[k, s, self.YELLOW])
-                before = self.colors[k - 1, s, self.YELLOW]
-                ty_product = self.logical_product(now, before, name='ty_product_{}_{}'.format(k, s))
+                ty_product = self.logical_product(self.notcolors[k, s, self.YELLOW],
+                                                  self.colors[k - 1, s, self.YELLOW],
+                                                  name='ty_product_{}_{}'.format(k, s))
 
-                self.model.addConstr((self.configuration.yellow_time[s] - ty[s]) * ty_product == 0,
+                self.model.addConstr((self.configuration.yellow_time[s] - ty) * ty_product == 0,
                                      'yellow_time_max_{}_{}'.format(k, s))
 
                 # Update ta
                 ty_aux = self.model.addVar(vtype=GRB.INTEGER, name='ty_aux_{}_{}'.format(k, s))
                 self.model.addConstr(ty_aux <= my)
                 self.model.addConstr(ty_aux >= 0)
-                self.model.addConstr(ty_aux == ty[s] * now, 'ty_aux_constr_{}_{}'.format(k, s))
+                self.model.addConstr(ty_aux == (ty + 1) * self.colors[k, s, self.YELLOW],
+                                     'ty_aux_constr_{}_{}'.format(k, s))
 
-                ty[s] += self.colors[k, s, self.YELLOW] - ty_aux
+                ty = ty_aux
 
-                self.model.addConstr(self.configuration.yellow_time[s] * self.colors[k, s, self.YELLOW] >= ty[s],
+                self.model.addConstr(self.configuration.yellow_time[s] * self.colors[k, s, self.YELLOW] >= ty,
                                      'yellow_time_min_{}_{}'.format(k, s))
-
-    def logical_product(self, x1, x2, name=''):
-        product = self.model.addVar(vtype=GRB.BINARY, name=name)
-        self.model.addConstr(product == x1 * x2)
-
-        return product
 
     def green_interval(self):
         tng = self.initial_notgreen
 
         for k in range(1, self.options.prediction_horizon + 1):
             for s1 in range(self.configuration.num_signals):
+                tng_product = self.logical_product(self.colors[k, s1, self.GREEN],
+                                                   self.notcolors[k - 1, s1, self.GREEN],
+                                                   name='tng_product_{}_{}'.format(k, s1))
+
                 for s2 in range(self.configuration.num_signals):
                     # Constrain green interval
-                    self.model.addConstr(
-                        (self.configuration.green_interval[s2, s1] - tng[s2]) * self.colors[k, s1, self.GREEN] <= 0,
-                        'green_interval_{}_{}_{}'.format(k, s1, s2))
+                    self.model.addConstr((self.configuration.green_interval[s2, s1] - tng[s2]) * tng_product <= 1,
+                                         'green_interval_{}_{}_{}'.format(k, s1, s2))
 
             for s in range(self.configuration.num_signals):
                 # Update tng
                 tng_aux = self.model.addVar(vtype=GRB.INTEGER, name='tng_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tng_aux <= self.initial_notgreen[s] + self.options.prediction_horizon)
+                self.model.addConstr(tng_aux <= self.initial_notgreen[s] + self.options.prediction_horizon + 1 - k)
                 self.model.addConstr(tng_aux >= 0)
-                self.model.addConstr(tng_aux == tng[s] * self.colors[k, s, self.GREEN],
+                self.model.addConstr(tng_aux == (tng[s] + 1) * self.notcolors[k, s, self.GREEN],
                                      'tng_aux_constr_{}_{}'.format(k, s))
 
-                tng[s] += (1 - self.colors[k, s, self.GREEN]) - tng_aux
+                tng[s] = tng_aux
+
+    def logical_product(self, x1, x2, name=''):
+        product = self.model.addVar(vtype=GRB.BINARY, name=name)
+
+        self.model.addGenConstrAnd(product, [x1, x2])
+
+        return product
 
     ##########################
     # Initial constraints
