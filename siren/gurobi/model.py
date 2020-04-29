@@ -28,11 +28,18 @@ class Intersection:
         # Create light variables
         self.colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
                                dtype=object)
+        self.notcolors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
+                               dtype=object)
         for k in range(self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
                     self.colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
                                                              name='{}_{}_{}'.format(self.color_name[c], k, s))
+                    self.notcolors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
+                                                             name='not_{}_{}_{}'.format(self.color_name[c], k, s))
+                    self.model.addConstr(self.notcolors[k, s, c] == 1 - self.colors[k, s, c])
+
+                    # TODO: Try notcolors as a potential speedup optimization
 
         # Add system dynamics
         stops_objective = self.stops_evolution(arr_fn)
@@ -118,11 +125,16 @@ class Intersection:
         for s in range(self.configuration.num_signals):
             queue = self.initial_queue[s]
             for k in range(1, self.options.prediction_horizon + 1):
+
+
                 q_res = queue + arr_fn(k, s) - dep_fn(k, s) * (
                         self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW])
+                # q_res2 = self.model.addVar(vtype=GRB.INTEGER, name='q_res_{}_{}'.format(k, s))
+                # self.model.addConstr(q_res2 == q_res)
 
                 q = self.model.addVar(vtype=GRB.BINARY, name='q_{}_{}'.format(k, s))
                 self.model.addGenConstrIndicator(q, False, q_res <= 0, name='q_residual_{}_{}'.format(k, s))
+
                 q_prime = self.model.addVar(vtype=GRB.INTEGER, name='q_prime_{}_{}'.format(k, s))
                 self.model.addConstr(q_prime == q * q_res)
 
@@ -151,13 +163,12 @@ class Intersection:
             for k in range(1, self.options.prediction_horizon + 1):
                 q_notempty = queue_notempty[k - 1, s]
 
-                request = self.model.addVar(vtype=GRB.BINARY, name='request_{}_{}'.format(k, s))
-                self.model.addConstr(request == (1 - self.colors[k, s, self.GREEN]) * q_notempty)
+                request = self.logical_product(self.notcolors[k, s, self.GREEN], q_notempty, name='request_{}_{}'.format(k, s))
 
                 tq_aux = self.model.addVar(vtype=GRB.INTEGER, name='tq_aux_{}_{}'.format(k, s))
-                self.model.addConstr(tq_aux == tq * (1 - request), 'tq_aux_constr_{}_{}'.format(k, s))
+                self.model.addConstr(tq_aux == (tq + 1) * request, 'tq_aux_constr_{}_{}'.format(k, s))
 
-                tq += request - tq_aux
+                tq = tq_aux
 
                 # Update objective function
                 objective.add(tq)
@@ -173,7 +184,7 @@ class Intersection:
                 self.model.addConstr(self.colors[k, s, :].sum() == 1, 'color_sum_{}_{}'.format(k, s))
 
     def nonblocking(self, k, s):
-        return self.colors[k, s, self.GREEN] + self.colors[k, s, self.YELLOW] + self.colors[k, s, self.AMBER]
+        return self.notcolors[k, s, self.RED]
 
     def conflict_constraints(self):
         for k in range(self.options.prediction_horizon + 1):
@@ -253,7 +264,7 @@ class Intersection:
             ta = self.initial_amber[s]
             for k in range(1, self.options.prediction_horizon + 1):
                 # Constrain amber time
-                ta_product = self.logical_product((1 - self.colors[k, s, self.AMBER]),
+                ta_product = self.logical_product(self.notcolors[k, s, self.AMBER],
                                                   self.colors[k - 1, s, self.AMBER],
                                                   name='ta_product_{}_{}'.format(k, s))
 
@@ -279,7 +290,7 @@ class Intersection:
             ty = self.initial_yellow[s]
             for k in range(1, self.options.prediction_horizon + 1):
                 # Constrain amber time
-                ty_product = self.logical_product((1 - self.colors[k, s, self.YELLOW]),
+                ty_product = self.logical_product(self.notcolors[k, s, self.YELLOW],
                                                   self.colors[k - 1, s, self.YELLOW],
                                                   name='ty_product_{}_{}'.format(k, s))
 
@@ -304,7 +315,7 @@ class Intersection:
         for k in range(1, self.options.prediction_horizon + 1):
             for s1 in range(self.configuration.num_signals):
                 tng_product = self.logical_product(self.colors[k, s1, self.GREEN],
-                                                   1 - self.colors[k - 1, s1, self.GREEN],
+                                                   self.notcolors[k - 1, s1, self.GREEN],
                                                    name='tng_product_{}_{}'.format(k, s1))
 
                 for s2 in range(self.configuration.num_signals):
@@ -317,16 +328,15 @@ class Intersection:
                 tng_aux = self.model.addVar(vtype=GRB.INTEGER, name='tng_aux_{}_{}'.format(k, s))
                 self.model.addConstr(tng_aux <= self.initial_notgreen[s] + self.options.prediction_horizon + 1 - k)
                 self.model.addConstr(tng_aux >= 0)
-                self.model.addConstr(tng_aux == (tng[s] + 1) * (1 - self.colors[k, s, self.GREEN]),
+                self.model.addConstr(tng_aux == (tng[s] + 1) * self.notcolors[k, s, self.GREEN],
                                      'tng_aux_constr_{}_{}'.format(k, s))
 
                 tng[s] = tng_aux
 
     def logical_product(self, x1, x2, name=''):
         product = self.model.addVar(vtype=GRB.BINARY, name=name)
-        self.model.addConstr(product - x1 <= 0)
-        self.model.addConstr(product - x2 <= 0)
-        self.model.addConstr(x1 + x2 - product <= 1)
+
+        self.model.addGenConstrAnd(product, [x1, x2])
 
         return product
 
