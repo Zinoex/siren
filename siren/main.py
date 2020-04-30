@@ -8,7 +8,7 @@ model = Intersection(configuration, Options(), arrival_function, departure_funct
 
 
 def test():
-    model.optimize()
+    model.optimize(verbose=True)
 
 
 print(timeit.timeit(test, number=1))
