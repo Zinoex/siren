@@ -4,10 +4,11 @@ from gurobi.structures import Options
 
 import timeit
 
+model = Intersection(configuration, Options(), arrival_function, departure_function, init)
+
 
 def test():
-    model = Intersection(configuration, Options(), arrival_function, departure_function, init)
-    model.optimize(verbose=True)
+    model.optimize()
 
 
 print(timeit.timeit(test, number=1))
