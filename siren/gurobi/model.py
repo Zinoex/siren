@@ -134,19 +134,27 @@ class Intersection:
         self.model.setObjectiveN(green_objective, 3, weight=self.options.green_weight)
 
     def optimize(self, verbose=False):
-        # self.model.tune()
-        #
-        # if self.model.tuneResultCount > 0:
-        #     # Load the best tuned parameters into the model
-        #     self.model.getTuneResult(0)
-
         self.model.optimize()
 
         if verbose:
-            for v in self.model.getVars():
-                print('%s %g' % (v.varName, v.x))
+            print('')
+            print('Variables:')
 
-            print('Obj: %g' % self.model.objVal)
+            for v in self.model.getVars():
+                print('[{}]: {}'.format(v.varName, v.x))
+
+            print('Obj: {}'.format(self.model.objVal))
+
+    def iis(self, file='model'):
+        self.model.computeIIS()
+        self.model.write('{}.iis'.format(file))
+
+    def tune(self):
+        self.model.tune()
+
+        if self.model.tuneResultCount > 0:
+            # Load the best tuned parameters into the model
+            self.model.getTuneResult(0)
 
     def get_colors(self, k=1):
         def select_value(color):
