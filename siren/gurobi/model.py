@@ -26,72 +26,19 @@ class Intersection:
         self.options = options
 
         # Create variables
+        self.colors = self.color_var('')
+        self.notcolors = self.color_var('not_')
 
-        # Colors
-        self.colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
-                               dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                for c in range(self.num_colors):
-                    self.colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
-                                                             name='{}_{}_{}'.format(self.color_name[c], k, s))
+        self.green_timer = self.lane_step_var('green_timer')
+        self.amber_timer = self.lane_step_var('amber_timer', inclusive=True)
+        self.yellow_timer = self.lane_step_var('yellow_timer', inclusive=True)
+        self.notgreen_timer = self.lane_step_var('notgreen_timer')
 
-        # Color negations
-        self.notcolors = np.empty(
-            (self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
-            dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                for c in range(self.num_colors):
-                    self.notcolors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
-                                                             name='not_{}_{}_{}'.format(self.color_name[c], k, s))
-
-        # Timers
-        self.green_timer = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon):
-            for s in range(self.configuration.num_signals):
-                self.green_timer[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='green_timer_{}_{}'.format(k, s))
-
-        self.amber_timer = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.amber_timer[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='amber_timer_{}_{}'.format(k, s))
-
-        self.yellow_timer = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.yellow_timer[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='yellow_timer_{}_{}'.format(k, s))
-
-        self.notgreen_timer = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon):
-            for s in range(self.configuration.num_signals):
-                self.notgreen_timer[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='notgreen_timer_{}_{}'.format(k, s))
-
-        # Queue variables
-        self.queue_notempty = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.queue_notempty[k, s] = self.model.addVar(vtype=GRB.BINARY, name='queue_notempty_{}_{}'.format(k, s))
-
-        self.queue = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.queue[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='queue_{}_{}'.format(k, s))
-
-        self.queue_prime = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.queue_prime[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='queue_prime_{}_{}'.format(k, s))
-
-        self.wait_time = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.wait_time[k, s] = self.model.addVar(vtype=GRB.CONTINUOUS, name='wait_time_{}_{}'.format(k, s))
-
-        self.request = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals), dtype=object)
-        for k in range(self.options.prediction_horizon + 1):
-            for s in range(self.configuration.num_signals):
-                self.request[k, s] = self.model.addVar(vtype=GRB.BINARY, name='request_{}_{}'.format(k, s))
+        self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, vtype=GRB.BINARY)
+        self.queue = self.lane_step_var('queue', inclusive=True)
+        self.queue_prime = self.lane_step_var('queue_prime', inclusive=True)
+        self.wait_time = self.lane_step_var('wait_time', inclusive=True)
+        self.request = self.lane_step_var('request', inclusive=True, vtype=GRB.BINARY)
 
         # Add system dynamics
         self.queue_dynamics(arr_fn, dep_fn)
@@ -111,7 +58,6 @@ class Intersection:
         self.amber_time_constraints()
         self.yellow_time_constraints()
         self.green_interval()
-
 
         # Set object function
         queue_objective = self.queue_objective()
@@ -169,6 +115,26 @@ class Intersection:
 
         self.initial_light_constraints(init)
         self.initial_queue(init)
+
+    #####################
+    # Create variables
+    #####################
+    def lane_step_var(self, name, inclusive=False, vtype=GRB.CONTINUOUS):
+        var = np.empty((self.options.prediction_horizon + inclusive, self.configuration.num_signals), dtype=object)
+        for k in range(self.options.prediction_horizon + inclusive):
+            for s in range(self.configuration.num_signals):
+                var[k, s] = self.model.addVar(vtype=vtype, name='{}_{}_{}'.format(name, k, s))
+
+        return var
+
+    def color_var(self, prefix):
+        colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors), dtype=object)
+        for k in range(self.options.prediction_horizon + 1):
+            for s in range(self.configuration.num_signals):
+                for c in range(self.num_colors):
+                    colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY, name='{}{}_{}_{}'.format(prefix, self.color_name[c], k, s))
+
+        return colors
 
     #####################
     # System dynamics
