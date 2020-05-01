@@ -19,7 +19,7 @@ class Intersection:
         AMBER: 'amber'
     }
 
-    def __init__(self, configuration, options, arr_fn, dep_fn, init):
+    def __init__(self, configuration, options, arr_fn, dep_fn):
         # Create a new model
         self.model = gp.Model('siren')
         self.configuration = configuration
@@ -96,13 +96,6 @@ class Intersection:
         # Add system dynamics
         self.queue_dynamics(arr_fn, dep_fn)
 
-        # Timer dynamics
-        self.green_timer_dynamics(init)
-        self.amber_timer_dynamics(init)
-        self.yellow_timer_dynamics(init)
-        self.notgreen_timer_dynamics(init)
-        self.wait_time_timer_dynamics(init)
-
         # Add constraints
         self.light_duality_constraints()
         self.single_light_constraints()
@@ -119,8 +112,6 @@ class Intersection:
         self.yellow_time_constraints()
         self.green_interval()
 
-        self.initial_light_constraints(init)
-        self.initial_queue(init)
 
         # Set object function
         queue_objective = self.queue_objective()
@@ -133,7 +124,9 @@ class Intersection:
         self.model.setObjectiveN(wait_objective, 2, weight=self.options.wait_weight)
         self.model.setObjectiveN(green_objective, 3, weight=self.options.green_weight)
 
-    def optimize(self, verbose=False):
+    def optimize(self, init, verbose=False):
+        self.init(init)
+
         self.model.optimize()
 
         if verbose:
@@ -145,7 +138,9 @@ class Intersection:
 
             print('Obj: {}'.format(self.model.objVal))
 
-    def iis(self, file='model'):
+    def iis(self, init, file='model'):
+        self.init(init)
+
         self.model.computeIIS()
         self.model.write('{}.iis'.format(file))
 
@@ -161,6 +156,19 @@ class Intersection:
             return color.x
 
         return np.vectorize(select_value)(self.colors[k, :, :])
+
+    def init(self, init):
+        # TODO: Clear old constraints
+
+        # Timer dynamics
+        self.green_timer_dynamics(init)
+        self.amber_timer_dynamics(init)
+        self.yellow_timer_dynamics(init)
+        self.notgreen_timer_dynamics(init)
+        self.wait_time_timer_dynamics(init)
+
+        self.initial_light_constraints(init)
+        self.initial_queue(init)
 
     #####################
     # System dynamics

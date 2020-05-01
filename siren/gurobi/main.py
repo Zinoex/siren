@@ -8,25 +8,25 @@ from gurobi.structures import Options
 
 
 def test(args):
-    model = Intersection(configuration, Options(), arrival_function, departure_function, init)
+    model = Intersection(configuration, Options(), arrival_function, departure_function)
 
     def optimize_wrapper():
-        model.optimize(verbose=args.verbose)
+        model.optimize(init, verbose=args.verbose)
 
     print("Execution took {}s".format(timeit.timeit(optimize_wrapper, number=args.iterations)))
 
 
 def colors(args):
-    model = Intersection(configuration, Options(), arrival_function, departure_function, init)
-    model.optimize(verbose=args.verbose)
+    model = Intersection(configuration, Options(), arrival_function, departure_function)
+    model.optimize(init, verbose=args.verbose)
 
     print('The next colors are:')
     print(model.get_colors())
 
 
 def iis():
-    model = Intersection(configuration, Options(), arrival_function, departure_function, init)
-    model.iis()
+    model = Intersection(configuration, Options(), arrival_function, departure_function)
+    model.iis(init)
 
 
 def parse_arguments():
@@ -62,3 +62,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+s
