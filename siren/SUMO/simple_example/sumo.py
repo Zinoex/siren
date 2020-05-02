@@ -59,8 +59,10 @@ class SUMO_Simulation:
     def step_sim(self):
         # Step through the simulation until self.max_iterations steps have completed
         tlsID = "gneJ29"
-        
-        traci.trafficlight.setRedYellowGreenState(tlsID, "r"*16)
+        # print(traci.trafficlight.getControlledLanes(tlsID))
+        # print(traci.trafficlight.getControlledLinks(tlsID))
+        # print(traci.trafficlight.getPhase(tlsID))
+        traci.trafficlight.setRedYellowGreenState(tlsID, "rrrrrrrrrrrrrrrrr")
         # print(data)
         if self.simulation_step <= self.max_iterations:
             traci.simulationStep()
