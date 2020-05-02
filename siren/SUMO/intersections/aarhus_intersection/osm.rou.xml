@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on Fri 01 May 2020 04:38:51 PM PDT by Eclipse SUMO netedit Version 1.2.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/SUMO/intersections/aarhus_intersection/osm.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/SUMO/intersections/aarhus_intersection/osm.net.xml"/>
+        <output.street-names value="true"/>
+    </output>
+
+    <processing>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="false"/>
+    </processing>
+
+    <junctions>
+        <no-internal-links value="false"/>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
+        <rectangular-lane-cut value="false"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="true"/>
+    </pedestrian>
+
+    <netedit>
+        <route-files value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/SUMO/intersections/aarhus_intersection/osm.rou"/>
+    </netedit>
+
+</configuration>
+-->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <route id="route_0" edges="gneE14 gneE13 gneE6 gneE5" />
+        <flow id="flow_0_v"  route="route_0" type="DEFAULT_VEHTYPE"  vehsPerHour="600"/>
+        <flow id="flow_0_b"  route="route_0" type="DEFAULT_BIKETYPE" vehsPerHour="60"/>
+    <route id="route_1" edges="gneE14 gneE13 gneE4 502199947#0" />
+        <flow id="flow_1_v"  route="route_1" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>
+        <flow id="flow_1_b"  route="route_1" type="DEFAULT_BIKETYPE" vehsPerHour="60"/>
+    <route id="route_2" edges="-502199947#0 35279828 gneE6 gneE5" />
+        <flow id="flow_2_v"  route="route_2" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>
+        <flow id="flow_2_b"  route="route_2" type="DEFAULT_BIKETYPE" vehsPerHour="60"/>
+    <route id="route_3" edges="-502199947#0 35279828 -24095610" />
+        <flow id="flow_3_b" route="route_3" type="DEFAULT_BIKETYPE" vehsPerHour="600"/>
+    <route id="route_4" edges="-502199947#0 35279828 34631095#4  34631095#4.118" />
+        <flow id="flow_4_v" route="route_4" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>  
+    <route id="route_5" edges="34631095#0 34631095#3 34631095#4 34631095#4.118" />
+        <flow id="flow_5_v"  route="route_5" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>
+    <route id="route_6" edges="34631095#0 34631095#3 gneE4 502199947#0" />
+        <flow id="flow_6_v"  route="route_6" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>
+    <route id="route_7" edges="24095610 gneE4 502199947#0" />
+        <flow id="flow_7_b" route="route_7" type="DEFAULT_BIKETYPE" vehsPerHour="600"/>
+</routes>
