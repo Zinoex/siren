@@ -62,7 +62,7 @@ class SUMO_Simulation:
         # print(traci.trafficlight.getControlledLanes(tlsID))
         # print(traci.trafficlight.getControlledLinks(tlsID))
         # print(traci.trafficlight.getPhase(tlsID))
-        traci.trafficlight.setRedYellowGreenState(tlsID, "rrrrrrrrrrrrrrrrr")
+        traci.trafficlight.setRedYellowGreenState(tlsID, "GGGGGGGGGGGrGGGGG")
         # print(data)
         if self.simulation_step <= self.max_iterations:
             traci.simulationStep()
