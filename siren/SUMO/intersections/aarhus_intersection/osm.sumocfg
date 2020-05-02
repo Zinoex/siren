@@ -12,7 +12,7 @@
     </input>
 
     <processing>
-        <ignore-route-errors value="true"/>
+        <ignore-route-errors value="false"/>
     </processing>
 
     <routing>

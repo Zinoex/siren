@@ -38,10 +38,9 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <route id="route_0" edges="gneE14 gneE13 gneE6 gneE5" />
+    <route id="route_0" edges="gneE14 gneE13 gneE6"/>
         <flow id="flow_0_v"  route="route_0" type="DEFAULT_VEHTYPE"  vehsPerHour="600"/>
-        <flow id="flow_0_b"  route="route_0" type="DEFAULT_BIKETYPE" vehsPerHour="60"/>
-    <route id="route_1" edges="gneE14 gneE13 gneE4 502199947#0" />
+    <!-- <route id="route_1" edges="gneE14 gneE13 gneE4 502199947#0" />
         <flow id="flow_1_v"  route="route_1" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>
         <flow id="flow_1_b"  route="route_1" type="DEFAULT_BIKETYPE" vehsPerHour="60"/>
     <route id="route_2" edges="-502199947#0 35279828 gneE6 gneE5" />
@@ -56,5 +55,5 @@
     <route id="route_6" edges="34631095#0 34631095#3 gneE4 502199947#0" />
         <flow id="flow_6_v"  route="route_6" type="DEFAULT_VEHTYPE"  vehsPerHour="1200"/>
     <route id="route_7" edges="24095610 gneE4 502199947#0" />
-        <flow id="flow_7_b" route="route_7" type="DEFAULT_BIKETYPE" vehsPerHour="600"/>
+        <flow id="flow_7_b" route="route_7" type="DEFAULT_BIKETYPE" vehsPerHour="600"/> -->
 </routes>
