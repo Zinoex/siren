@@ -70,6 +70,8 @@ class Intersection:
         self.model.setObjectiveN(wait_objective, 2, weight=self.options.wait_weight)
         self.model.setObjectiveN(green_objective, 3, weight=self.options.green_weight)
 
+        self.initial_set = False
+
     def optimize(self, init, verbose=False):
         self.init(init)
 
@@ -106,15 +108,18 @@ class Intersection:
     def init(self, init):
         # TODO: Clear old constraints
 
-        # Timer dynamics
-        self.green_timer_dynamics(init)
-        self.amber_timer_dynamics(init)
-        self.yellow_timer_dynamics(init)
-        self.notgreen_timer_dynamics(init)
-        self.wait_time_timer_dynamics(init)
+        if not self.initial_set:
+            # Timer dynamics
+            self.green_timer_dynamics(init)
+            self.amber_timer_dynamics(init)
+            self.yellow_timer_dynamics(init)
+            self.notgreen_timer_dynamics(init)
+            self.wait_time_timer_dynamics(init)
 
-        self.initial_light_constraints(init)
-        self.initial_queue(init)
+            self.initial_light_constraints(init)
+            self.initial_queue(init)
+
+            self.initial_set = True
 
     #####################
     # Create variables
