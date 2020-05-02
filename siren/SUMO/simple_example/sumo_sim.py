@@ -7,7 +7,8 @@ import traci
 
 
 class SUMOSimulation:
-    def __init__(self, max_iterations=100, config_file='./data/cross.sumocfg', gui_bin_loc="/usr/bin/sumo-gui"):
+    def __init__(self, max_iterations=100, config_file='../intersections/aarhus_intersection/osm.sumocfg',\
+         gui_bin_loc="/usr/bin/sumo-gui"):
         self.simulation_step = 0
         self.max_iterations = max_iterations
 
@@ -22,7 +23,7 @@ class SUMOSimulation:
 
         self.options, self.option_args = opt_parser.parse_args()
         self.sumoCmd = [gui_bin_loc, "-c", config_file]
-
+        
         if self.options.nogui:
             self.sumoBinary = checkBinary("sumo")
             print("No GUI detected.")
@@ -33,7 +34,7 @@ class SUMOSimulation:
     def start_sim(self):
         print("Starting Sumo Simulation.")
         traci.start(self.sumoCmd)
-        traci.trafficlight.setPhase("0", 2)
+        # traci.trafficlight.setPhase("0", 2)
 
     def step_sim(self):
         if self.simulation_step <= self.max_iterations:
