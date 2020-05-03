@@ -74,6 +74,7 @@ class SUMO_Simulation:
         print("Starting Sumo Simulation.")
         traci.start(self.sumoCmd)
         self.map_lanes_to_signals()
+        self.counted_vehicle_ids = []
         
     def step_sim(self):
         # Step through the simulation until self.max_iterations steps have completed
@@ -102,17 +103,27 @@ class SUMO_Simulation:
 
     def arrival_prediction(self, s=None, k=1):
         time_window_len = k * self.time_step_len
-        arr_vec = np.zeros((self.num_lights, 1))
-        tl_lanes = traci.trafficlight.getControlledLanes(self.tlsID)
-        for lane in tl_lanes:
-            in_lane_vehicles = traci.lane.getLastStepVehicleIDs(lane)
-            for vehicle in in_lane_vehicles:
-                vehicle_speed = traci.vehicle.getSpeed(vehicle)
-                nextTLS = traci.vehicle.getNextTLS(vehicle)[0]
-                if nextTLS[0] == self.tlsID:
-                    distance = nextTLS[2]
-                    if time_window_len * vehicle_speed >= distance:
-                        # print("Arriving car: ", vehicle,  lane)
+        arr_vec = np.zeros((self.num_lights, 1)).astype(int)
+        # Loop through all lanes in the intersection
+        lanes = []
+        for lane in traci.trafficlight.getControlledLanes(self.tlsID):
+            # Loop through vehicles in that lane
+            if not lane in lanes:
+                lanes.append(lane)
+                traci.lane.getLastStepVehicleIDs(lane)
+                for vehicle in np.unique(traci.lane.getLastStepVehicleIDs(lane)):
 
-                        arr_vec[self.lane_map[lane]]+= 1
+                    vehicle_speed = traci.vehicle.getSpeed(vehicle)
+                    nextTLS = traci.vehicle.getNextTLS(vehicle)[0]
+                    # Make sure it's the correct traffic signal
+                    # print(vehicle)
+                    if nextTLS[0] == self.tlsID:
+                        distance = nextTLS[2]
+                        if time_window_len * vehicle_speed >= distance:
+                            print("Arriving car: ", vehicle,  lane)
+                            # print(self.lane_map[lane])
+                            if not vehicle in self.counted_vehicle_ids:
+                                self.counted_vehicle_ids.append(vehicle)
+                                arr_vec[self.lane_map[lane]]+= 1
+                    # print("\n")
         print(arr_vec)
