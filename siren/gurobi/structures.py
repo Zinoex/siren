@@ -25,7 +25,7 @@ class Timing:
 
 
 class Options:
-    def __init__(self, prediction_horizon=20, control_horizon=20,
+    def __init__(self, prediction_horizon=30, control_horizon=30,
                  queue_weight=1, stops_weight=1,
                  wait_weight=1, green_weight=1):
         self.prediction_horizon = prediction_horizon
