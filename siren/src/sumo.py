@@ -12,6 +12,8 @@ import numpy as np
 
 
 class SUMO_Simulation:
+    color_string_map = {"r": 0, "y": 2, "g": 1, "G": 1, "s": 2, "u": 3}
+
     def __init__(self, max_iterations = 10000,\
         config_file = '../SUMO/intersections/aarhus_intersection/osm.sumocfg',\
         gui_bin_loc = "/usr/bin/sumo-gui",\
@@ -22,6 +24,9 @@ class SUMO_Simulation:
         self.max_iterations = max_iterations
         self.json_description_file = json_description_file
         self.parse_intersection_description()
+        self.queue = None
+        self.light_times = None
+        self.lights = None
         if "SUMO_HOME" in os.environ:
             tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
             sys.path.append(tools)
@@ -88,16 +93,57 @@ class SUMO_Simulation:
         print("Starting Sumo Simulation.")
         traci.start(self.sumoCmd)
         self.map_lanes_to_signals()
+        self.num_tls_lanes = len(traci.trafficlight.getControlledLanes(self.tlsID))
         
     def light_matrix_to_string(self):
         pass
     
-    
+    def update_light_times(self):
+        if self.light_times is None:
+            self.light_times = np.zeros((self.num_tls_lanes, 4))
+            self.prev_light_state = " " * self.num_tls_lanes
+        current_light_state = traci.trafficlight.getRedYellowGreenState(self.tlsID)
+        print(current_light_state)
+        for i, light in enumerate(current_light_state):
+            light_mat_idx = self.color_string_map[light]
+            print(i, light_mat_idx)
+            if light == self.prev_light_state[i]:
+                self.light_times[i, light_mat_idx] += 1
+            else:
+                self.light_times[i, light_mat_idx] = 0
+        print(self.light_times, "\n\n")
+        self.prev_light_state = current_light_state
+        return self.light_times.copy()
 
-        return light_str
-    def step_sim(self):
+    def update_queue(self, stop_speed_thresh=3., stop_dist_thresh=10.):
+        self.queue = np.zeros((self.num_tls_lanes, 1))
+        tls_lane_ids = traci.trafficlight.getControlledLanes(self.tlsID)
+        # print(tls_lane_ids)
+        counted_vehicles = []
+        for tls_idx, tls_lane in enumerate(tls_lane_ids):
+            for vehicle in np.unique(traci.lane.getLastStepVehicleIDs(tls_lane)):
+                # print(vehicle, traci.vehicle.isStopped(vehicle))
+                speed = traci.vehicle.getSpeed(vehicle)
+                remaining_dist = traci.vehicle.getNextTLS(vehicle)[0][2]
+                if speed < stop_speed_thresh and remaining_dist < stop_dist_thresh and not vehicle in counted_vehicles:
+                    counted_vehicles.append(vehicle)
+                    # print("Vehicle stopped: ", vehicle, tls_lane)
+                    self.queue[tls_idx] += 1
+                    # signal_lane_id = traci.trafficlight.getControlledLanes(self.tlsID)[tls_lane_idx]
+        # print(self.queue)
+        signal_queue = np.zeros((self.num_signals, 1))
+        for i, lane_queue in enumerate(self.queue):
+            # print(i, lane_queue, self.lane_mapping_vec[i])
+            signal_queue[self.lane_mapping_vec[i]] += lane_queue
+    
+        return signal_queue
+    
+    def step_sim(self, light_matrix):
+
         # Step through the simulation until self.max_iterations steps have completed
         arr_cars = self.arrival_prediction()
+        self.update_queue()
+        self.update_light_times()
         
                 
         # print(traci.trafficlight.getControlledLanes(tlsID))
