@@ -17,6 +17,7 @@ class SUMO_Simulation:
         json_description_file="../intersections/aarhus_intersection/osm.desc.json"):
         self.simulation_step = 0
         self.time_step_len = 1.0 # Temporary (seconds per timestep)
+        self.prediction_horizon = 10 # Temporary
         self.max_iterations = max_iterations
         self.json_description_file = json_description_file
         self.parse_intersection_description()
@@ -50,7 +51,7 @@ class SUMO_Simulation:
 
         # Convert JSON keys to class member names
         self.intersection_name = desc_data["intersection_name"]
-        self.num_lights = desc_data["num_lights"]
+        self.num_signals = desc_data["num_signals"]
         self.tlsID = desc_data["traffic_junction_id"]
         start_light_state = desc_data["start_light_state"]  
         time_vectors = desc_data["time_vectors"]
@@ -64,7 +65,6 @@ class SUMO_Simulation:
         self.lane_map = {}
         for i, lane in enumerate(signal_lanes):
             self.lane_map[lane] = self.lane_mapping_vec[i]
-        print(self.lane_map)
 
         
     def generate_route_file(self):
@@ -78,7 +78,6 @@ class SUMO_Simulation:
         print("Starting Sumo Simulation.")
         traci.start(self.sumoCmd)
         self.map_lanes_to_signals()
-        self.counted_vehicle_ids = []
         
     def step_sim(self):
         # Step through the simulation until self.max_iterations steps have completed
@@ -105,29 +104,33 @@ class SUMO_Simulation:
 
 
 
-    def arrival_prediction(self, s=None, k=1):
-        time_window_len = k * self.time_step_len
-        arr_vec = np.zeros((self.num_lights, 1)).astype(int)
+    def arrival_prediction(self):
+        arr_mat = np.zeros((self.prediction_horizon, self.num_signals)).astype(int)
         # Loop through all lanes in the intersection
-        lanes = []
-        for lane in traci.trafficlight.getControlledLanes(self.tlsID):
-            # Loop through vehicles in that lane
-            if not lane in lanes:
-                lanes.append(lane)
-                traci.lane.getLastStepVehicleIDs(lane)
-                for vehicle in np.unique(traci.lane.getLastStepVehicleIDs(lane)):
+        vehicles = np.unique(traci.vehicle.getIDList())
+        for k in range(self.prediction_horizon):
+            time_window_len = (k+1) * self.time_step_len
 
-                    vehicle_speed = traci.vehicle.getSpeed(vehicle)
-                    nextTLS = traci.vehicle.getNextTLS(vehicle)[0]
-                    # Make sure it's the correct traffic signal
-                    # print(vehicle)
-                    if nextTLS[0] == self.tlsID:
-                        distance = nextTLS[2]
-                        if time_window_len * vehicle_speed >= distance:
-                            print("Arriving car: ", vehicle,  lane)
-                            # print(self.lane_map[lane])
-                            if not vehicle in self.counted_vehicle_ids:
-                                self.counted_vehicle_ids.append(vehicle)
-                                arr_vec[self.lane_map[lane]]+= 1
-                    # print("\n")
-        print(arr_vec)
+            for vehicle in vehicles:
+                nextTLS = traci.vehicle.getNextTLS(vehicle)
+                if nextTLS:
+                    # Returns a tuple, but we only care about the first in the list
+                    nextTLS = nextTLS[0]
+                    # Lane ID in the traffic light signal
+                    tls_lane_idx = nextTLS[1]
+                    signal_lane_id = traci.trafficlight.getControlledLanes(self.tlsID)[tls_lane_idx]
+                    # Distance remaining to the traffic light
+                    remaining_distance = nextTLS[2]
+                    # Current Vehicle Speed
+                    speed = traci.vehicle.getSpeed(vehicle)
+                    # Calculate the time until the car arrives at the light
+                    if speed > 0.0:
+                        time_until_tls = remaining_distance / speed
+                    else:     
+                        # The vehicle isn't moving, we can't predict it's arrival
+                        time_until_tls = np.inf
+                    if time_until_tls < time_window_len:
+                        # Delete the vehicle so it's not counted again
+                        vehicles = np.delete(vehicles, np.where(vehicles==vehicle))
+                        arr_mat[k, self.lane_map[signal_lane_id]] += 1
+        return arr_mat
