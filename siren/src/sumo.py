@@ -10,11 +10,12 @@ import numpy as np
 
 
 
+
 class SUMO_Simulation:
     def __init__(self, max_iterations = 10000,\
-        config_file = '../intersections/aarhus_intersection/osm.sumocfg',\
+        config_file = '../SUMO/intersections/aarhus_intersection/osm.sumocfg',\
         gui_bin_loc = "/usr/bin/sumo-gui",\
-        json_description_file="../intersections/aarhus_intersection/osm.desc.json"):
+        json_description_file="../SUMO/intersections/aarhus_intersection/osm.desc.json"):
         self.simulation_step = 0
         self.time_step_len = 1.0 # Temporary (seconds per timestep)
         self.prediction_horizon = 10 # Temporary
@@ -48,17 +49,26 @@ class SUMO_Simulation:
         # Open the description.json file and save all values to the class
         with open(self.json_description_file) as file:
             desc_data = json.loads(file.read())
-
+        
         # Convert JSON keys to class member names
         self.intersection_name = desc_data["intersection_name"]
         self.num_signals = desc_data["num_signals"]
         self.tlsID = desc_data["traffic_junction_id"]
-        start_light_state = desc_data["start_light_state"]  
-        time_vectors = desc_data["time_vectors"]
-        green_interval_matrix = desc_data["green_interval_matrix"]
-        conflict_matrix = desc_data["conflict_matrix"]
+        self.config_dict = {}
+        self.config_dict["num_signals"] = self.num_signals
+        self.config_dict["conflict_matrix"] = desc_data["conflict_matrix"]
+        self.config_dict["green_interval"] = desc_data["green_interval_matrix"]
+        self.config_dict["yellow_time"] = desc_data["time_vectors"]["yellow"]
+        self.config_dict["amber_time"] = desc_data["time_vectors"]["amber"]
+        self.config_dict["min_green"] = desc_data["time_vectors"]["amber"]
+        
+        
 
         self.lane_mapping_vec = desc_data["SUMO_lane_mapping"]
+
+    def get_configuration(self):
+        return self.config_dict
+
 
     def map_lanes_to_signals(self):
         signal_lanes = traci.trafficlight.getControlledLanes(self.tlsID)
@@ -79,6 +89,12 @@ class SUMO_Simulation:
         traci.start(self.sumoCmd)
         self.map_lanes_to_signals()
         
+    def light_matrix_to_string(self):
+        pass
+    
+    
+
+        return light_str
     def step_sim(self):
         # Step through the simulation until self.max_iterations steps have completed
         arr_cars = self.arrival_prediction()
