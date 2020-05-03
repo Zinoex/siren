@@ -61,11 +61,11 @@ class SUMO_Simulation:
         self.tlsID = desc_data["traffic_junction_id"]
         self.config_dict = {}
         self.config_dict["num_signals"] = self.num_signals
-        self.config_dict["conflict_matrix"] = desc_data["conflict_matrix"]
-        self.config_dict["green_interval"] = desc_data["green_interval_matrix"]
-        self.config_dict["yellow_time"] = desc_data["time_vectors"]["yellow"]
-        self.config_dict["amber_time"] = desc_data["time_vectors"]["amber"]
-        self.config_dict["min_green"] = desc_data["time_vectors"]["amber"]
+        self.config_dict["conflict_matrix"] = np.array(desc_data["conflict_matrix"])
+        self.config_dict["green_interval"] = np.array(desc_data["green_interval_matrix"])
+        self.config_dict["yellow_time"] = np.array(desc_data["time_vectors"]["yellow"])
+        self.config_dict["amber_time"] = np.array(desc_data["time_vectors"]["amber"])
+        self.config_dict["min_green"] = np.array(desc_data["time_vectors"]["amber"])
         
         
 
@@ -95,25 +95,42 @@ class SUMO_Simulation:
         self.map_lanes_to_signals()
         self.num_tls_lanes = len(traci.trafficlight.getControlledLanes(self.tlsID))
         
-    def light_matrix_to_string(self):
-        pass
+    def get_lights(self):
+        light_mat = np.zeros((self.num_signals, 4))
+        lane_light_state = traci.trafficlight.getRedYellowGreenState(self.tlsID)
+        for lane_idx, light in enumerate(lane_light_state):
+            light_mat[self.lane_mapping_vec[lane_idx], self.color_string_map[light]] = 1
+        print(lane_light_state)
+        print(light_mat)
+        return light_mat
     
+    def set_lights(self, light_marix=None):
+        for signal_idx in range(self.num_signals):
+            for color_idx in range(4):
+                cur_light_state = light_marix[signal_idx, color_idx]
+                # print(np.where(self.lane_mapping_vec == signal_idx))
+    
+    def get_light_times(self):
+        return self.light_times
+
+
     def update_light_times(self):
         if self.light_times is None:
             self.light_times = np.zeros((self.num_tls_lanes, 4))
             self.prev_light_state = " " * self.num_tls_lanes
         current_light_state = traci.trafficlight.getRedYellowGreenState(self.tlsID)
-        print(current_light_state)
         for i, light in enumerate(current_light_state):
             light_mat_idx = self.color_string_map[light]
-            print(i, light_mat_idx)
+            # print(i, light_mat_idx)
             if light == self.prev_light_state[i]:
                 self.light_times[i, light_mat_idx] += 1
             else:
                 self.light_times[i, light_mat_idx] = 0
-        print(self.light_times, "\n\n")
+        # print(self.light_times, "\n\n")
         self.prev_light_state = current_light_state
-        return self.light_times.copy()
+
+    def get_queue(self):
+        return self.queue
 
     def update_queue(self, stop_speed_thresh=3., stop_dist_thresh=10.):
         self.queue = np.zeros((self.num_tls_lanes, 1))
@@ -131,6 +148,7 @@ class SUMO_Simulation:
                     self.queue[tls_idx] += 1
                     # signal_lane_id = traci.trafficlight.getControlledLanes(self.tlsID)[tls_lane_idx]
         # print(self.queue)
+
         signal_queue = np.zeros((self.num_signals, 1))
         for i, lane_queue in enumerate(self.queue):
             # print(i, lane_queue, self.lane_mapping_vec[i])
@@ -144,6 +162,7 @@ class SUMO_Simulation:
         arr_cars = self.arrival_prediction()
         self.update_queue()
         self.update_light_times()
+        
         
                 
         # print(traci.trafficlight.getControlledLanes(tlsID))
