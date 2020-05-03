@@ -128,8 +128,8 @@ class Intersection:
 
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
-                self.arrival_constraints[k - 1, s] = self.model.addConstr(self.arrival[k, s] == arrival[k, s])
-                self.departure_constraints[k - 1, s] = self.model.addConstr(self.departure[k, s] == departure[k, s])
+                self.arrival_constraints[k - 1, s] = self.model.addConstr(self.arrival[k, s] == arrival[k - 1, s])
+                self.departure_constraints[k - 1, s] = self.model.addConstr(self.departure[k, s] == departure[k - 1, s])
 
         for s in range(self.configuration.num_signals):
             self.initial_constraints[0, s] = self.model.addConstr(self.green_timer[0, s] == init.timing.green[s])
