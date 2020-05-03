@@ -1,27 +1,22 @@
-import os 
+import os
 import sys
 import argparse
-import random
 import json
 from sumolib import checkBinary
 import traci
 import numpy as np
 
 
-
-
-
-class SUMO_Simulation:
+class SUMOSimulation:
     color_string_map = {"r": 1, "y": 2, "g": 0, "G": 0, "s": 2, "u": 3}
     color_string_map_reverse_list = ["G", "r", "y", "a"]
 
-    def __init__(self, max_iterations = 10000,\
-        config_file = '../SUMO/intersections/aarhus_intersection/osm.sumocfg',\
-        gui_bin_loc = "/usr/bin/sumo-gui",\
-        json_description_file="../SUMO/intersections/aarhus_intersection/osm.desc.json"):
+    def __init__(self, options, max_iterations=10000,
+                 config_file='../sumo/intersections/aarhus_intersection/osm.sumocfg',
+                 json_description_file="../sumo/intersections/aarhus_intersection/osm.desc.json"):
         self.simulation_step = 0
-        self.time_step_len = 1.0 # Temporary (seconds per timestep)
-        self.prediction_horizon = 10 # Temporary
+        self.time_step_len = 1.0  # Temporary (seconds per timestep)
+        self.prediction_horizon = 10  # Temporary
         self.max_iterations = max_iterations
         self.json_description_file = json_description_file
         self.parse_intersection_description()
@@ -34,9 +29,7 @@ class SUMO_Simulation:
         else:
             sys.exit("SUMO_HOME not declared in path.")
 
-        self.options = self.arguments()
-        
-        if self.options.nogui:
+        if options.nogui:
             self.sumoBinary = checkBinary("sumo")
             print("No GUI detected.")
         else:
@@ -48,14 +41,13 @@ class SUMO_Simulation:
     @staticmethod
     def arguments():
         parser = argparse.ArgumentParser('Test performance or run simulations of siren')
-        parser.add_argument("--nogui", action="store_true", help="run the commandline version of sumo")
         return parser.parse_args()
-    
+
     def parse_intersection_description(self):
         # Open the description.json file and save all values to the class
         with open(self.json_description_file) as file:
             desc_data = json.loads(file.read())
-        
+
         # Convert JSON keys to class member names
         self.intersection_name = desc_data["intersection_name"]
         self.num_signals = desc_data["num_signals"]
@@ -67,14 +59,11 @@ class SUMO_Simulation:
         self.config_dict["yellow_time"] = np.array(desc_data["time_vectors"]["yellow"])
         self.config_dict["amber_time"] = np.array(desc_data["time_vectors"]["amber"])
         self.config_dict["min_green"] = np.array(desc_data["time_vectors"]["amber"])
-        
-        
 
         self.lane_mapping_vec = desc_data["SUMO_lane_mapping"]
 
     def get_configuration(self):
         return self.config_dict
-
 
     def map_lanes_to_signals(self):
         # Create lane_map dictionary to turn lanes to signals
@@ -82,7 +71,6 @@ class SUMO_Simulation:
         self.lane_map = {}
         for i, lane in enumerate(signal_lanes):
             self.lane_map[lane] = self.lane_mapping_vec[i]
-
 
     def start_sim(self):
         # Initiate the Traci GUI
@@ -93,8 +81,8 @@ class SUMO_Simulation:
         # Constant number of lanes is used a lot
         self.num_tls_lanes = len(traci.trafficlight.getControlledLanes(self.tlsID))
         # Set lights to off (default state)
-        traci.trafficlight.setRedYellowGreenState(self.tlsID, "o"*self.num_tls_lanes)
-        
+        traci.trafficlight.setRedYellowGreenState(self.tlsID, "o" * self.num_tls_lanes)
+
     def get_lights(self):
         # Initialize matrix to zeros
         light_mat = np.zeros((self.num_signals, 4))
@@ -104,26 +92,24 @@ class SUMO_Simulation:
         for lane_idx, light in enumerate(lane_light_state):
             light_mat[self.lane_mapping_vec[lane_idx], self.color_string_map[light]] = 1
         return light_mat
-    
+
     def set_lights(self, light_matrix):
         # Set default as off (could be red too) to allow indexing of the list
         output_light_list = ["o"] * self.num_tls_lanes
+        
         # Argmax gives which light is a 1 for each signal
-            # Assumes light rows are one-hot-encoded
+        # Assumes light rows are one-hot-encoded
         for i, color_idx in enumerate(np.argmax(light_matrix, axis=1)):
             # Loop through to find all lane mappings for each signal
-            for ii, sig_idx in enumerate(self.lane_mapping_vec):
-                if sig_idx == i:
-                    # Update appropriate light
-                    output_light_list[ii] = self.color_string_map_reverse_list[color_idx]                    
-        traci.trafficlight.setRedYellowGreenState(self.tlsID, "".join(output_light_list)) 
-    
+            for ii in [k for k, v in self.lane_mapping_vec if v == i]:
+                output_light_list[ii] = self.color_string_map_reverse_list[color_idx]
+        traci.trafficlight.setRedYellowGreenState(self.tlsID, "".join(output_light_list))
+
     def get_light_times(self):
         return self.light_times
 
-
     def update_light_times(self):
-        # Not sure if this if statementstill needs to be there, was for debugging
+        # Not sure if this if statement still needs to be there, was for debugging
         if self.light_times is None:
             self.light_times = np.zeros((self.num_tls_lanes, 4))
             self.prev_light_state = " " * self.num_tls_lanes
@@ -158,8 +144,8 @@ class SUMO_Simulation:
                 # Get the speed from the vehicle class
                 speed = traci.vehicle.getSpeed(vehicle)
                 # getNextTLS returns a list of lists
-                    # first index is which light is next (we only care about next)
-                    # second index is for distance to light
+                # first index is which light is next (we only care about next)
+                # second index is for distance to light
                 remaining_dist = traci.vehicle.getNextTLS(vehicle)[0][2]
                 # If it's going slow enough && it's close enough && we haven't counted it
                 if speed < stop_speed_thresh and remaining_dist < stop_dist_thresh and not vehicle in counted_vehicles:
@@ -174,9 +160,9 @@ class SUMO_Simulation:
         for i, lane_queue in enumerate(self.queue):
             # Increment the signal queue this lane belongs to by all cars on the lane
             signal_queue[self.lane_mapping_vec[i]] += lane_queue
-    
+
         return signal_queue
-    
+
     def step_sim(self):
         # Step through the simulation until self.max_iterations steps have completed
         arr_cars = self.arrival_prediction()
@@ -200,7 +186,7 @@ class SUMO_Simulation:
         vehicles = np.unique(traci.vehicle.getIDList())
         for k in range(self.prediction_horizon):
             # k starts at zero (we want a time for the first index of self.time_step_len)
-            time_window_len = (k+1) * self.time_step_len
+            time_window_len = (k + 1) * self.time_step_len
             # Loop through the vehicles (this array has elements deleted later in this function to not double count)
             for vehicle in vehicles:
                 nextTLS = traci.vehicle.getNextTLS(vehicle)
@@ -217,11 +203,11 @@ class SUMO_Simulation:
                     # Calculate the time until the car arrives at the light
                     if speed > 0.0:
                         time_until_tls = remaining_distance / speed
-                    else:     
+                    else:
                         # The vehicle isn't moving, we can't predict it's arrival
                         time_until_tls = np.inf
                     if time_until_tls < time_window_len:
                         # Delete the vehicle so it's not counted again
-                        vehicles = np.delete(vehicles, np.where(vehicles==vehicle))
+                        vehicles = np.delete(vehicles, np.where(vehicles == vehicle))
                         arr_mat[k, self.lane_map[signal_lane_id]] += 1
         return arr_mat

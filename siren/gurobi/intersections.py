@@ -1,4 +1,4 @@
-from .structures import Configuration
+from gurobi.structures import Configuration
 
 import numpy as np
 

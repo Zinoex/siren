@@ -4,7 +4,7 @@ from gurobipy import GRB
 import numpy as np
 
 
-class Intersection:
+class GurobiIntersection:
     num_colors = 4
 
     GREEN = 0
@@ -93,8 +93,10 @@ class Intersection:
 
         self.initial_set = False
         self.initial_constraints = np.empty((6 + self.num_colors, self.configuration.num_signals), dtype=object)
-        self.arrival_constraints = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
-        self.departure_constraints = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
+        self.arrival_constraints = np.empty((self.options.prediction_horizon, self.configuration.num_signals),
+                                            dtype=object)
+        self.departure_constraints = np.empty((self.options.prediction_horizon, self.configuration.num_signals),
+                                              dtype=object)
 
     def optimize(self, queue, arrival, departure, verbose=False):
         self.init(queue, arrival, departure)
@@ -160,7 +162,8 @@ class Intersection:
             self.initial_constraints[5, s] = self.model.addConstr(self.queue[0, s] == queue[s])
 
             for c in range(self.num_colors):
-                self.initial_constraints[6 + c, s] = self.model.addConstr(self.colors[0, s, c] == self.initial_lights[s, c])
+                self.initial_constraints[6 + c, s] = self.model.addConstr(
+                    self.colors[0, s, c] == self.initial_lights[s, c])
 
         self.initial_set = True
 
@@ -176,11 +179,13 @@ class Intersection:
         return var
 
     def color_var(self, prefix):
-        colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors), dtype=object)
+        colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
+                          dtype=object)
         for k in range(self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
-                    colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY, name='{}{}_{}_{}'.format(prefix, self.color_name[c], k, s))
+                    colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
+                                                        name='{}{}_{}_{}'.format(prefix, self.color_name[c], k, s))
 
         return colors
 
@@ -190,14 +195,17 @@ class Intersection:
     def queue_dynamics(self):
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
-                self.model.addConstr(self.queue_prime[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.departure[k, s] * self.colors[k, s, self.GREEN])
+                self.model.addConstr(
+                    self.queue_prime[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.departure[k, s] *
+                    self.colors[k, s, self.GREEN])
                 self.model.addGenConstrIndicator(self.queue_notempty[k, s], False, self.queue_prime[k, s] <= 0)
 
                 self.model.addConstr(self.queue[k, s] <= 1000 * self.queue_notempty[k, s])
                 self.model.addConstr(self.queue[k, s] >= 0)
 
                 self.model.addConstr(self.queue[k, s] <= self.queue_prime[k, s])
-                self.model.addConstr(self.queue[k, s] >= self.queue_prime[k, s] - 1000 * (1 - self.queue_notempty[k, s]))
+                self.model.addConstr(
+                    self.queue[k, s] >= self.queue_prime[k, s] - 1000 * (1 - self.queue_notempty[k, s]))
 
     #####################
     # Objectives
@@ -333,7 +341,8 @@ class Intersection:
     def wait_time_timer_dynamics(self):
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
-                self.model.addGenConstrAnd(self.request[k, s], [self.notcolors[k, s, self.GREEN], self.queue_notempty[k, s]])
+                self.model.addGenConstrAnd(self.request[k, s],
+                                           [self.notcolors[k, s, self.GREEN], self.queue_notempty[k, s]])
                 self.increment_counter(self.wait_time, k, s, self.request[k, s], 1 - self.request[k, s],
                                        self.wait_time[0, s] + k)
 
@@ -353,7 +362,8 @@ class Intersection:
                 amber_diff = self.colors[k, s, self.AMBER] - self.colors[k + 1, s, self.AMBER]
 
                 self.model.addConstr(self.configuration.amber_time[s] * amber_diff <= self.amber_timer[k, s])
-                self.model.addConstr(self.configuration.amber_time[s] * self.colors[k + 1, s, self.AMBER] >= self.amber_timer[k + 1, s])
+                self.model.addConstr(
+                    self.configuration.amber_time[s] * self.colors[k + 1, s, self.AMBER] >= self.amber_timer[k + 1, s])
 
     def yellow_time_constraints(self):
         for s in range(self.configuration.num_signals):
@@ -361,7 +371,9 @@ class Intersection:
                 yellow_diff = self.colors[k, s, self.YELLOW] - self.colors[k + 1, s, self.YELLOW]
 
                 self.model.addConstr(self.configuration.yellow_time[s] * yellow_diff <= self.yellow_timer[k, s])
-                self.model.addConstr(self.configuration.yellow_time[s] * self.colors[k + 1, s, self.YELLOW] >= self.yellow_timer[k + 1, s])
+                self.model.addConstr(
+                    self.configuration.yellow_time[s] * self.colors[k + 1, s, self.YELLOW] >= self.yellow_timer[
+                        k + 1, s])
 
     def green_interval(self):
         for s1 in range(self.configuration.num_signals):
@@ -369,4 +381,5 @@ class Intersection:
                 green_diff = self.notcolors[k, s1, self.GREEN] - self.notcolors[k + 1, s1, self.GREEN]
 
                 for s2 in range(self.configuration.num_signals):
-                    self.model.addConstr(self.configuration.green_interval[s2, s1] * green_diff <= self.notgreen_timer[k, s2])
+                    self.model.addConstr(
+                        self.configuration.green_interval[s2, s1] * green_diff <= self.notgreen_timer[k, s2])

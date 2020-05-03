@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on Fri 01 May 2020 04:38:51 PM PDT by Eclipse SUMO netedit Version 1.2.0
+<!-- generated on Fri 01 May 2020 04:38:51 PM PDT by Eclipse sumo netedit Version 1.2.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
-        <sumo-net-file value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/SUMO/intersections/aarhus_intersection/osm.net.xml"/>
+        <sumo-net-file value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/sumo/intersections/aarhus_intersection/osm.net.xml"/>
     </input>
 
     <output>
-        <output-file value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/SUMO/intersections/aarhus_intersection/osm.net.xml"/>
+        <output-file value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/sumo/intersections/aarhus_intersection/osm.net.xml"/>
         <output.street-names value="true"/>
     </output>
 
@@ -31,7 +31,7 @@
     </pedestrian>
 
     <netedit>
-        <route-files value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/SUMO/intersections/aarhus_intersection/osm.rou"/>
+        <route-files value="/mnt/c/Users/Garey/Desktop/Ubuntu%20Directory/siren/siren/sumo/intersections/aarhus_intersection/osm.rou"/>
     </netedit>
 
 </configuration>
