@@ -35,10 +35,10 @@ def main():
     sim_continue_flag = True
     while sim_continue_flag:
         sim_continue_flag =  sumo_sim_obj.step_sim()
-        light_times = sumo_sim_obj.get_light_times()
+        # light_times = sumo_sim_obj.get_light_times()
         queue = sumo_sim_obj.get_queue()
         print(queue)
-        light_state= sumo_sim_obj.get_lights()
+        # light_state= sumo_sim_obj.get_lights()
         # sumo_sim_obj.set_lights()
         
         # init = Initialization(light_state, light_times, queue)
@@ -48,7 +48,7 @@ def main():
         light_matrix = g_model.optimize(queue, arr, departure_function())
         # print(g_model.optimize(init, arr, departure_function(), verbose=True))
         
-        print("Light Matrix: ", light_matrix)
+        # print("Light Matrix: ", light_matrix)
         sumo_sim_obj.set_lights(light_matrix)
         
 
