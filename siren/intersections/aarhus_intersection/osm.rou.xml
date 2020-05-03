@@ -55,7 +55,7 @@
         <flow id="flow_5_b"  route="route_5" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
     <route id="route_6" edges="24095610 gneE4 502199947#0"/>
         <flow id="flow_6_b"  route="route_6" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
-    <route id="route_7" edges="24095610 gneE6"/>
+    <route id="route_7" edges="24095610 gneE4"/>
         <flow id="flow_7_b"  route="route_7" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
     <!-- <route id="route_8" edges="gneE13 gneE6"/>
         <flow id="flow_8_b"  route="route_8" type="DEFAULT_PEDTYPE"  vehsPerHour="360"/> -->
