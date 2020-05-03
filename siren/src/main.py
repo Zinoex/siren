@@ -1,13 +1,20 @@
 from sumo import SUMO_Simulation as SUMO
+import argparse
+import sys
+sys.path.append("../gurobi/")
+
+from model import Intersection
+
 
 
 
 
 def main():
-
-    
+    # opt_model = model = Intersection(configuration, Options(), arrival_function, departure_function)
     
     sumo_sim_obj = SUMO()
+#    configuratio = sumo_sim_obj.configuration()
+
     sumo_sim_obj.generate_route_file()
     print("Sumo Object created")
     sumo_sim_obj.start_sim()

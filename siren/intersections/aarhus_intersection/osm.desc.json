@@ -1,5 +1,6 @@
 {
     "intersection_name": "Aarhus",
+    "num_lights": 8,
     "traffic_junction_id": "gneJ29", 
     "start_light_state":{
         "green":[0, 0, 0, 0, 0, 0, 0, 0],
