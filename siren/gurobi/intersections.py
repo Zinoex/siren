@@ -1,4 +1,4 @@
-from .structures import Initialization, Configuration, Timing
+from .structures import Configuration
 
 import numpy as np
 
@@ -12,18 +12,6 @@ class SuperSimpleDeparture:
     def __getitem__(self, item):
         return 3
 
-
-super_simple_init = Initialization(
-    lights=np.array([[0, 1, 0, 0], [0, 1, 0, 0]]),
-    timing=Timing(
-        np.array([0, 0]),
-        np.array([0, 0]),
-        np.array([0, 0]),
-        np.array([4, 4]),
-        np.array([6, 15])
-    ),
-    queue=np.array([3, 12])
-)
 
 super_simple_configuration = Configuration(
     2,

@@ -8,22 +8,6 @@ class Configuration:
         self.min_green = min_green
 
 
-class Initialization:
-    def __init__(self, lights, timing, queue):
-        self.lights = lights
-        self.timing = timing
-        self.queue = queue
-
-
-class Timing:
-    def __init__(self, green, yellow, amber, not_green, wait):
-        self.green = green
-        self.yellow = yellow
-        self.amber = amber
-        self.not_green = not_green
-        self.wait = wait
-
-
 class Options:
     def __init__(self, prediction_horizon=30, control_horizon=30,
                  queue_weight=1, stops_weight=1,
