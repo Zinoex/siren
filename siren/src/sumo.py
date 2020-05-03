@@ -100,16 +100,17 @@ class SUMO_Simulation:
         lane_light_state = traci.trafficlight.getRedYellowGreenState(self.tlsID)
         for lane_idx, light in enumerate(lane_light_state):
             light_mat[self.lane_mapping_vec[lane_idx], self.color_string_map[light]] = 1
-        print(lane_light_state)
-        print(light_mat)
+
         return light_mat
     
     def set_lights(self, light_marix=None):
+        output_light_list = [None] * self.num_tls_lanes
         for signal_idx in range(self.num_signals):
             for color_idx in range(4):
-                cur_light_state = light_marix[signal_idx, color_idx]
-                print(np.where(self.lane_mapping_vec == signal_idx))
-        # TODO: Finish this. 
+                desired_light_state = light_marix[signal_idx, color_idx]
+                output_light_list[np.where(self.lane_mapping_vec == signal_idx)] = \
+                    self.color_string_map[desired_light_state]
+        traci.trafficlight.setRedYellowGreenState(self.tlsID, output_light_list) 
     
     def get_light_times(self):
         return self.light_times
@@ -157,7 +158,7 @@ class SUMO_Simulation:
     
         return signal_queue
     
-    def step_sim(self, light_matrix):
+    def step_sim(self):
 
         # Step through the simulation until self.max_iterations steps have completed
         arr_cars = self.arrival_prediction()
