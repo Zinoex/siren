@@ -44,7 +44,7 @@ def generate_routefile():
     pWE = 1. / 10
     pEW = 1. / 11
     pNS = 1. / 30
-    with open("data/cross.rou.xml", "w") as routes:
+    with open("simple_example/cross.rou.xml", "w") as routes:
         print("""<routes>
         <vType id="typeWE" accel="0.8" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="16.67" \
 guiShape="passenger"/>
@@ -123,6 +123,6 @@ if __name__ == "__main__":
 
     # this is the normal way of using traci. sumo is started as a
     # subprocess and then the python script connects and runs
-    traci.start([sumoBinary, "-c", "data/cross.sumocfg",
+    traci.start([sumoBinary, "-c", "simple_example/cross.sumocfg",
                              "--tripinfo-output", "tripinfo.xml"])
     run()

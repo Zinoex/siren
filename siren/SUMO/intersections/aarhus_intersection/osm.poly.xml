@@ -7,7 +7,7 @@
         <net-file value="osm.net.xml"/>
         <osm-files value="osm_bbox.osm.xml"/>
         <osm.keep-full-type value="true"/>
-        <type-file value="/usr/share/sumo/data/typemap/osmPolyconvert.typ.xml"/>
+        <type-file value="/usr/share/sumo/simple_example/typemap/osmPolyconvert.typ.xml"/>
     </input>
 
     <output>

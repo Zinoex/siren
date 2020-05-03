@@ -1,6 +1,6 @@
 import os 
 import sys
-import optparse
+import argparse
 import random
 import json
 from sumolib import checkBinary
@@ -26,10 +26,8 @@ class SUMO_Simulation:
             sys.path.append(tools)
         else:
             sys.exit("SUMO_HOME not declared in path.")
-        optParser = optparse.OptionParser()
-        optParser.add_option("--nogui", action="store_true",
-                            default=False, help="run the commandline version of sumo")
-        self.options, self.option_args = optParser.parse_args()
+
+        self.options = self.arguments()
         
         if self.options.nogui:
             self.sumoBinary = checkBinary("sumo")
@@ -39,6 +37,12 @@ class SUMO_Simulation:
             print("GUI detected.")
         self.sumoCmd = [self.sumoBinary, "-c", config_file, "--tripinfo-output", "tripinfo.xml"]
         self.parse_intersection_description()
+
+    @staticmethod
+    def arguments():
+        parser = argparse.ArgumentParser('Test performance or run simulations of siren')
+        parser.add_argument("--nogui", action="store_true", help="run the commandline version of sumo")
+        return parser.parse_args()
     
     def parse_intersection_description(self):
         # Open the description.json file and save all values to the class
