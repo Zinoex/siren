@@ -13,6 +13,7 @@ import numpy as np
 
 class SUMO_Simulation:
     color_string_map = {"r": 0, "y": 2, "g": 1, "G": 1, "s": 2, "u": 3}
+    color_string_map_reverse_list = ["r", "G", "y", "a"]
 
     def __init__(self, max_iterations = 10000,\
         config_file = '../SUMO/intersections/aarhus_intersection/osm.sumocfg',\
@@ -103,14 +104,39 @@ class SUMO_Simulation:
 
         return light_mat
     
-    def set_lights(self, light_marix=None):
-        output_light_list = [None] * self.num_tls_lanes
+    def set_lights(self, light_marix):
+
+
+        output_light_list = ["o"] * self.num_tls_lanes
         for signal_idx in range(self.num_signals):
             for color_idx in range(4):
-                desired_light_state = light_marix[signal_idx, color_idx]
-                output_light_list[np.where(self.lane_mapping_vec == signal_idx)] = \
-                    self.color_string_map[desired_light_state]
-        traci.trafficlight.setRedYellowGreenState(self.tlsID, output_light_list) 
+                if light_marix[signal_idx, color_idx]:
+                    desired_color_str = self.color_string_map_reverse_list[color_idx]
+                    signals = []
+                    for s in self.lane_mapping_vec:
+                        if int(s) == color_idx:
+                            # signals.append(self.lane_mapping_vec[i])
+                            output_light_list[s] = desired_color_str
+                    # for lane in np.where(self.lane_mapping_vec == signal_idx):
+                    #     print("Lane: ", lane)
+                    #     try:
+                    #         output_light_list[lane] = desired_color_str
+                    #     except:
+                    #         print("Error *************")
+
+
+
+
+        #         print(str(int(desired_light_state)))
+        #         color_num = int(self.color_string_map[str(int(desired_light_state))])
+        #         for key in self.color_string_map.keys():
+        #             if int(self.color_string_map[key]) == color_num:
+        #                 color_str = key 
+        #                 break
+        print(light_marix)
+        print(output_light_list)
+                    
+        # traci.trafficlight.setRedYellowGreenState(self.tlsID, output_light_list) 
     
     def get_light_times(self):
         return self.light_times

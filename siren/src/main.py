@@ -4,7 +4,7 @@ import sys
 sys.path.append("../gurobi/")
 
 from model import Intersection
-from structures import Configuration, Initialization
+from structures import Configuration
 import argparse
 import timeit
 
@@ -25,24 +25,30 @@ def main():
     sumo_sim_obj = SUMO()
     configuration = Configuration(**sumo_sim_obj.get_configuration())
     g_model = Intersection(configuration, Options())
+    sumo_sim_obj.prediction_horizon = g_model.options.prediction_horizon
     # opt_model_obj = Intersection()
 #    configuratio = sumo_sim_obj.configuration()
-    light_mat_temp = []
     # sumo_sim_obj.generate_route_file()
     print("Sumo Object created")
     sumo_sim_obj.start_sim()
 
     sim_continue_flag = True
     while sim_continue_flag:
-        sim_continue_flag =  sumo_sim_obj.step_sim(light_mat_temp)
+        sim_continue_flag =  sumo_sim_obj.step_sim()
         light_times = sumo_sim_obj.get_light_times()
         queue = sumo_sim_obj.get_queue()
+        print(queue)
         light_state= sumo_sim_obj.get_lights()
-        init = Initialization(light_state, light_times, queue)
+        # sumo_sim_obj.set_lights()
+        
+        # init = Initialization(light_state, light_times, queue)
         arr = sumo_sim_obj.arrival_prediction()
-        print(arr.shape)
-        print(g_model.optimize(init, arr, departure_function(), verbose=True))
-
+        light_matrix = g_model.optimize(queue, arr, departure_function())
+        # print(g_model.optimize(init, arr, departure_function(), verbose=True))
+        
+        
+        sumo_sim_obj.set_lights(light_matrix)
+        
 
 
 
