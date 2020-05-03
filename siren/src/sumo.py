@@ -108,7 +108,8 @@ class SUMO_Simulation:
         for signal_idx in range(self.num_signals):
             for color_idx in range(4):
                 cur_light_state = light_marix[signal_idx, color_idx]
-                # print(np.where(self.lane_mapping_vec == signal_idx))
+                print(np.where(self.lane_mapping_vec == signal_idx))
+        # TODO: Finish this. 
     
     def get_light_times(self):
         return self.light_times
