@@ -34,25 +34,25 @@ def iis():
 
 
 def sumo(args):
-    sumo_sim_obj = SUMOSimulation(args)
-    configuration = Configuration(**sumo_sim_obj.get_configuration())
-    g_model = GurobiIntersection(configuration, Options())
-    sumo_sim_obj.prediction_horizon = g_model.options.prediction_horizon
+    sim = SUMOSimulation(args)
+    configuration = Configuration(**sim.get_configuration())
+    model = GurobiIntersection(configuration, Options())
+    sim.prediction_horizon = model.options.prediction_horizon
 
     departure = SuperSimpleDeparture()
 
     print("Sumo Object created")
-    sumo_sim_obj.start_sim()
+    sim.start()
 
     sim_continue_flag = True
     while sim_continue_flag:
-        sim_continue_flag = sumo_sim_obj.step_sim()
-        queue = sumo_sim_obj.get_queue()
+        sim_continue_flag = sim.step()
+        queue = sim.get_queue()
         print("Queue: {}".format(queue))
 
-        arr = sumo_sim_obj.arrival_prediction()
-        light_matrix = g_model.optimize(queue, arr, departure)
-        sumo_sim_obj.set_lights(light_matrix)
+        arr = sim.arrival_prediction()
+        light_matrix = model.optimize(queue, arr, departure, verbose=args.verbose)
+        sim.set_lights(light_matrix)
 
 
 def parse_arguments():

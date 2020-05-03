@@ -1,0 +1,25 @@
+{
+    "intersection_name": "Road work",
+    "num_signals": 2,
+    "traffic_junction_id": "gneJ14",
+    "start_light_state":{
+        "green":[0, 0],
+        "yellow": [0, 0],
+        "red": [1, 1],
+        "amber": [0, 0]
+    },
+    "time_vectors": {
+        "yellow": [4, 4],
+        "amber": [2, 2],
+        "min_green": [6, 6]
+    }, 
+    "green_interval_matrix": [
+        [0, 10],
+        [10, 0]
+    ],
+    "conflict_matrix": [
+        [0, 1],
+        [1, 0]
+    ], 
+    "SUMO_lane_mapping": [0, 1]
+}

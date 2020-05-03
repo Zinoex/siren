@@ -9,11 +9,11 @@ import numpy as np
 
 class SUMOSimulation:
     color_string_map = {"r": 1, "y": 2, "g": 0, "G": 0, "s": 2, "u": 3}
-    color_string_map_reverse_list = ["G", "r", "y", "a"]
+    color_string_map_reverse_list = ["G", "r", "y", "u"]
 
     def __init__(self, options, max_iterations=10000,
-                 config_file='../sumo/intersections/aarhus_intersection/osm.sumocfg',
-                 json_description_file="../sumo/intersections/aarhus_intersection/osm.desc.json"):
+                 config_file='sumo/intersections/super_simple_example/road_construction.sumocfg',
+                 json_description_file="sumo/intersections/super_simple_example/road_construction.desc.json"):
         self.simulation_step = 0
         self.time_step_len = 1.0  # Temporary (seconds per timestep)
         self.prediction_horizon = 10  # Temporary
@@ -58,7 +58,7 @@ class SUMOSimulation:
         self.config_dict["green_interval"] = np.array(desc_data["green_interval_matrix"])
         self.config_dict["yellow_time"] = np.array(desc_data["time_vectors"]["yellow"])
         self.config_dict["amber_time"] = np.array(desc_data["time_vectors"]["amber"])
-        self.config_dict["min_green"] = np.array(desc_data["time_vectors"]["amber"])
+        self.config_dict["min_green"] = np.array(desc_data["time_vectors"]["min_green"])
 
         self.lane_mapping_vec = desc_data["SUMO_lane_mapping"]
 
@@ -72,7 +72,7 @@ class SUMOSimulation:
         for i, lane in enumerate(signal_lanes):
             self.lane_map[lane] = self.lane_mapping_vec[i]
 
-    def start_sim(self):
+    def start(self):
         # Initiate the Traci GUI
         print("Starting Sumo Simulation.")
         traci.start(self.sumoCmd)
@@ -96,13 +96,14 @@ class SUMOSimulation:
     def set_lights(self, light_matrix):
         # Set default as off (could be red too) to allow indexing of the list
         output_light_list = ["o"] * self.num_tls_lanes
-        
         # Argmax gives which light is a 1 for each signal
         # Assumes light rows are one-hot-encoded
         for i, color_idx in enumerate(np.argmax(light_matrix, axis=1)):
             # Loop through to find all lane mappings for each signal
-            for ii in [k for k, v in self.lane_mapping_vec if v == i]:
-                output_light_list[ii] = self.color_string_map_reverse_list[color_idx]
+            for ii, sig_idx in enumerate(self.lane_mapping_vec):
+                if sig_idx == i:
+                    # Update appropriate light
+                    output_light_list[ii] = self.color_string_map_reverse_list[color_idx]
         traci.trafficlight.setRedYellowGreenState(self.tlsID, "".join(output_light_list))
 
     def get_light_times(self):
@@ -130,9 +131,9 @@ class SUMOSimulation:
     def get_queue(self):
         return self.queue
 
-    def update_queue(self, stop_speed_thresh=3., stop_dist_thresh=10.):
+    def update_queue(self, stop_speed_thresh=3., stop_dist_thresh=50.):
         # Initialize to zero (queue is in terms of lanes)
-        self.queue = np.zeros((self.num_tls_lanes, 1))
+        lane_queues = np.zeros(self.num_tls_lanes)
         # Get list of all lane ids connected to the traffic light
         tls_lane_ids = traci.trafficlight.getControlledLanes(self.tlsID)
         # This is to not double count vehicles (might be a little hacky)
@@ -148,24 +149,22 @@ class SUMOSimulation:
                 # second index is for distance to light
                 remaining_dist = traci.vehicle.getNextTLS(vehicle)[0][2]
                 # If it's going slow enough && it's close enough && we haven't counted it
-                if speed < stop_speed_thresh and remaining_dist < stop_dist_thresh and not vehicle in counted_vehicles:
+                if speed < stop_speed_thresh and remaining_dist < stop_dist_thresh and vehicle not in counted_vehicles:
                     # count it
                     counted_vehicles.append(vehicle)
                     # increase the queue
-                    self.queue[tls_idx] += 1
+                    lane_queues[tls_idx] += 1
         # self.queue was described using tls lanes, we want signals
         # Initialize to zero
-        signal_queue = np.zeros((self.num_signals, 1))
+        self.queue = np.zeros(self.num_signals)
         # Loop through queue just generated
-        for i, lane_queue in enumerate(self.queue):
+        for i, lane_queue in enumerate(lane_queues):
             # Increment the signal queue this lane belongs to by all cars on the lane
-            signal_queue[self.lane_mapping_vec[i]] += lane_queue
+            self.queue[self.lane_mapping_vec[i]] += lane_queue
 
-        return signal_queue
-
-    def step_sim(self):
+    def step(self):
         # Step through the simulation until self.max_iterations steps have completed
-        arr_cars = self.arrival_prediction()
+        # arr_cars = self.arrival_prediction()
         # Do this every step
         self.update_queue()
         # Run simulation until max_iterations
@@ -182,6 +181,7 @@ class SUMOSimulation:
     def arrival_prediction(self):
         # Initialize the array
         arr_mat = np.zeros((self.prediction_horizon, self.num_signals)).astype(int)
+
         # Get all vehicles in model
         vehicles = np.unique(traci.vehicle.getIDList())
         for k in range(self.prediction_horizon):
@@ -189,15 +189,15 @@ class SUMOSimulation:
             time_window_len = (k + 1) * self.time_step_len
             # Loop through the vehicles (this array has elements deleted later in this function to not double count)
             for vehicle in vehicles:
-                nextTLS = traci.vehicle.getNextTLS(vehicle)
-                if nextTLS:
+                next_tls = traci.vehicle.getNextTLS(vehicle)
+                if next_tls:
                     # Returns a tuple, but we only care about the first in the list
-                    nextTLS = nextTLS[0]
+                    next_tls = next_tls[0]
                     # Lane ID in the traffic light signal
-                    tls_lane_idx = nextTLS[1]
+                    tls_lane_idx = next_tls[1]
                     signal_lane_id = traci.trafficlight.getControlledLanes(self.tlsID)[tls_lane_idx]
                     # Distance remaining to the traffic light
-                    remaining_distance = nextTLS[2]
+                    remaining_distance = next_tls[2]
                     # Current Vehicle Speed
                     speed = traci.vehicle.getSpeed(vehicle)
                     # Calculate the time until the car arrives at the light
