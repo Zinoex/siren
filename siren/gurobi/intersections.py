@@ -3,12 +3,14 @@ from .structures import Initialization, Configuration, Timing
 import numpy as np
 
 
-def super_simple_arrival_function(k, s):
-    return 1
+class SuperSimpleArrival:
+    def __getitem__(self, item):
+        return 1
 
 
-def super_simple_departure_function(k, s):
-    return 3
+class SuperSimpleDeparture:
+    def __getitem__(self, item):
+        return 3
 
 
 super_simple_init = Initialization(
