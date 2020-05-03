@@ -43,10 +43,12 @@ def main():
         
         # init = Initialization(light_state, light_times, queue)
         arr = sumo_sim_obj.arrival_prediction()
+        # print("Queue", queue)
+        # print("Arrivals: ", arr)
         light_matrix = g_model.optimize(queue, arr, departure_function())
         # print(g_model.optimize(init, arr, departure_function(), verbose=True))
         
-        
+        print("Light Matrix: ", light_matrix)
         sumo_sim_obj.set_lights(light_matrix)
         
 

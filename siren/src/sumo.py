@@ -12,7 +12,7 @@ import numpy as np
 
 
 class SUMO_Simulation:
-    color_string_map = {"r": 0, "y": 2, "g": 1, "G": 1, "s": 2, "u": 3}
+    color_string_map = {"r": 1, "y": 2, "g": 0, "G": 0, "s": 2, "u": 3}
     color_string_map_reverse_list = ["r", "G", "y", "a"]
 
     def __init__(self, max_iterations = 10000,\
@@ -133,8 +133,8 @@ class SUMO_Simulation:
         #             if int(self.color_string_map[key]) == color_num:
         #                 color_str = key 
         #                 break
-        print(light_marix)
-        print(output_light_list)
+        # print(light_marix)
+        # print(output_light_list)
                     
         # traci.trafficlight.setRedYellowGreenState(self.tlsID, output_light_list) 
     
