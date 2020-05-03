@@ -1,8 +1,10 @@
 import argparse
 import timeit
 
+import numpy as np
+
 from gurobi.model import Intersection
-from gurobi.intersections import super_simple_init as init, SuperSimpleArrival as arrival, \
+from gurobi.intersections import SuperSimpleArrival as arrival, \
     SuperSimpleDeparture as departure, super_simple_configuration as configuration
 from gurobi.structures import Options
 
@@ -11,14 +13,14 @@ def test(args):
     model = Intersection(configuration, Options())
 
     def optimize_wrapper():
-        model.optimize(init, arrival(), departure(), verbose=args.verbose)
+        model.optimize(np.array([3, 12]), arrival(), departure(), verbose=args.verbose)
 
     print("Execution took {}s".format(timeit.timeit(optimize_wrapper, number=args.iterations)))
 
 
 def colors(args):
     model = Intersection(configuration, Options())
-    model.optimize(init, arrival(), departure(), verbose=args.verbose)
+    model.optimize(np.array([3, 12]), arrival(), departure(), verbose=args.verbose)
 
     print('The next colors are:')
     print(model.get_colors())
@@ -26,7 +28,7 @@ def colors(args):
 
 def iis():
     model = Intersection(configuration, Options())
-    model.iis(init, arrival(), departure())
+    model.iis(np.array([3, 12]), arrival(), departure())
 
 
 def parse_arguments():

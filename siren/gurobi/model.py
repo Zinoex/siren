@@ -25,6 +25,17 @@ class Intersection:
         self.configuration = configuration
         self.options = options
 
+        # Progress state
+        self.initial_green = np.zeros(self.configuration.num_signals)
+        self.initial_yellow = np.zeros(self.configuration.num_signals)
+        self.initial_amber = np.zeros(self.configuration.num_signals)
+        self.initial_notgreen = np.zeros(self.configuration.num_signals)
+        self.initial_wait = np.zeros(self.configuration.num_signals)
+
+        self.initial_lights = np.zeros((self.configuration.num_signals, self.num_colors))
+        for s in range(self.configuration.num_signals):
+            self.initial_lights[s, self.RED] = 1
+
         # Create variables
         self.colors = self.color_var('')
         self.notcolors = self.color_var('not_')
@@ -85,8 +96,8 @@ class Intersection:
         self.arrival_constraints = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
         self.departure_constraints = np.empty((self.options.prediction_horizon, self.configuration.num_signals), dtype=object)
 
-    def optimize(self, init, arrival, departure, verbose=False):
-        self.init(init, arrival, departure)
+    def optimize(self, queue, arrival, departure, verbose=False):
+        self.init(queue, arrival, departure)
 
         self.model.optimize()
 
@@ -99,10 +110,17 @@ class Intersection:
 
             print('Obj: {}'.format(self.model.objVal))
 
+        self.initial_green = np.vectorize(self.select_value)(self.green_timer[1, :])
+        self.initial_yellow = np.vectorize(self.select_value)(self.yellow_timer[1, :])
+        self.initial_amber = np.vectorize(self.select_value)(self.amber_timer[1, :])
+        self.initial_notgreen = np.vectorize(self.select_value)(self.notgreen_timer[1, :])
+        self.initial_wait = np.vectorize(self.select_value)(self.wait_time[1, :])
+        self.initial_lights = self.get_colors()
+
         return self.get_colors()
 
-    def iis(self, init, arrival, departure, file='model'):
-        self.init(init, arrival, departure)
+    def iis(self, queue, arrival, departure, file='model'):
+        self.init(queue, arrival, departure)
 
         self.model.computeIIS()
         self.model.write('{}.iis'.format(file))
@@ -114,13 +132,14 @@ class Intersection:
             # Load the best tuned parameters into the model
             self.model.getTuneResult(0)
 
+    @staticmethod
+    def select_value(var):
+        return var.x
+
     def get_colors(self, k=1):
-        def select_value(color):
-            return color.x
+        return np.vectorize(self.select_value)(self.colors[k, :, :])
 
-        return np.vectorize(select_value)(self.colors[k, :, :])
-
-    def init(self, init, arrival, departure):
+    def init(self, queue, arrival, departure):
         if self.initial_set:
             self.model.remove(self.initial_constraints.flatten().tolist())
             self.model.remove(self.arrival_constraints.flatten().tolist())
@@ -132,16 +151,16 @@ class Intersection:
                 self.departure_constraints[k - 1, s] = self.model.addConstr(self.departure[k, s] == departure[k - 1, s])
 
         for s in range(self.configuration.num_signals):
-            self.initial_constraints[0, s] = self.model.addConstr(self.green_timer[0, s] == init.timing.green[s])
-            self.initial_constraints[1, s] = self.model.addConstr(self.amber_timer[0, s] == init.timing.amber[s])
-            self.initial_constraints[2, s] = self.model.addConstr(self.yellow_timer[0, s] == init.timing.yellow[s])
-            self.initial_constraints[3, s] = self.model.addConstr(self.notgreen_timer[0, s] == init.timing.not_green[s])
-            self.initial_constraints[4, s] = self.model.addConstr(self.wait_time[0, s] == init.timing.wait[s])
+            self.initial_constraints[0, s] = self.model.addConstr(self.green_timer[0, s] == self.initial_green[s])
+            self.initial_constraints[1, s] = self.model.addConstr(self.amber_timer[0, s] == self.initial_amber[s])
+            self.initial_constraints[2, s] = self.model.addConstr(self.yellow_timer[0, s] == self.initial_yellow[s])
+            self.initial_constraints[3, s] = self.model.addConstr(self.notgreen_timer[0, s] == self.initial_notgreen[s])
+            self.initial_constraints[4, s] = self.model.addConstr(self.wait_time[0, s] == self.initial_wait[s])
 
-            self.initial_constraints[5, s] = self.model.addConstr(self.queue[0, s] == init.queue[s])
+            self.initial_constraints[5, s] = self.model.addConstr(self.queue[0, s] == queue[s])
 
             for c in range(self.num_colors):
-                self.initial_constraints[6 + c, s] = self.model.addConstr(self.colors[0, s, c] == init.lights[s, c])
+                self.initial_constraints[6 + c, s] = self.model.addConstr(self.colors[0, s, c] == self.initial_lights[s, c])
 
         self.initial_set = True
 
