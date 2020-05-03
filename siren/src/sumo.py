@@ -13,7 +13,7 @@ import numpy as np
 
 class SUMO_Simulation:
     color_string_map = {"r": 1, "y": 2, "g": 0, "G": 0, "s": 2, "u": 3}
-    color_string_map_reverse_list = ["r", "G", "y", "a"]
+    color_string_map_reverse_list = ["G", "r", "y", "a"]
 
     def __init__(self, max_iterations = 10000,\
         config_file = '../SUMO/intersections/aarhus_intersection/osm.sumocfg',\
@@ -95,6 +95,7 @@ class SUMO_Simulation:
         traci.start(self.sumoCmd)
         self.map_lanes_to_signals()
         self.num_tls_lanes = len(traci.trafficlight.getControlledLanes(self.tlsID))
+        traci.trafficlight.setRedYellowGreenState(self.tlsID, "r"*self.num_tls_lanes)
         
     def get_lights(self):
         light_mat = np.zeros((self.num_signals, 4))
@@ -104,39 +105,13 @@ class SUMO_Simulation:
 
         return light_mat
     
-    def set_lights(self, light_marix):
-
-
+    def set_lights(self, light_matrix):
         output_light_list = ["o"] * self.num_tls_lanes
-        for signal_idx in range(self.num_signals):
-            for color_idx in range(4):
-                if light_marix[signal_idx, color_idx]:
-                    desired_color_str = self.color_string_map_reverse_list[color_idx]
-                    signals = []
-                    for s in self.lane_mapping_vec:
-                        if int(s) == color_idx:
-                            # signals.append(self.lane_mapping_vec[i])
-                            output_light_list[s] = desired_color_str
-                    # for lane in np.where(self.lane_mapping_vec == signal_idx):
-                    #     print("Lane: ", lane)
-                    #     try:
-                    #         output_light_list[lane] = desired_color_str
-                    #     except:
-                    #         print("Error *************")
-
-
-
-
-        #         print(str(int(desired_light_state)))
-        #         color_num = int(self.color_string_map[str(int(desired_light_state))])
-        #         for key in self.color_string_map.keys():
-        #             if int(self.color_string_map[key]) == color_num:
-        #                 color_str = key 
-        #                 break
-        # print(light_marix)
-        # print(output_light_list)
-                    
-        # traci.trafficlight.setRedYellowGreenState(self.tlsID, output_light_list) 
+        for i, color_idx in enumerate(np.argmax(light_matrix, axis=1)):
+            for ii, sig_idx in enumerate(self.lane_mapping_vec):
+                if sig_idx == i:
+                    output_light_list[ii] = self.color_string_map_reverse_list[color_idx]                    
+        traci.trafficlight.setRedYellowGreenState(self.tlsID, "".join(output_light_list)) 
     
     def get_light_times(self):
         return self.light_times
@@ -189,7 +164,7 @@ class SUMO_Simulation:
         # Step through the simulation until self.max_iterations steps have completed
         arr_cars = self.arrival_prediction()
         self.update_queue()
-        self.update_light_times()
+        # self.update_light_times()
         
         
                 
