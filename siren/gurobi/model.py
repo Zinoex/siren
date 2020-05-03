@@ -99,6 +99,8 @@ class Intersection:
 
             print('Obj: {}'.format(self.model.objVal))
 
+        return self.get_colors()
+
     def iis(self, init, arrival, departure, file='model'):
         self.init(init, arrival, departure)
 
