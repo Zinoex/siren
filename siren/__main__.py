@@ -46,13 +46,14 @@ def sumo(args):
     print("Sumo Object created")
     sim.start()
 
-    sim_continue_flag = True
-    sim.step()
-
-    async def optimize(q, a, d):
-        return
+    sim_continue_flag = sim.step()
 
     while sim_continue_flag:
+        queue = sim.get_queue()
+        print("Queue: {}".format(queue))
+
+        arr = sim.arrival_prediction()
+
         for i in range(20):
             t1 = time.time()
             sim_continue_flag = sim.step()
@@ -63,10 +64,6 @@ def sumo(args):
 
             time.sleep(0.05 - (t2 - t1))
 
-        queue = sim.get_queue()
-        print("Queue: {}".format(queue))
-
-        arr = sim.arrival_prediction()
         light_matrix = model.optimize(queue, arr, departure, verbose=args.verbose)
 
         sim.set_lights(light_matrix)
