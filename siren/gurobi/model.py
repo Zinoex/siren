@@ -46,11 +46,11 @@ class GurobiIntersection:
         self.notgreen_timer = self.lane_step_var('notgreen_timer')
 
         self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
+        self.queue_empty = self.lane_step_var('queue_empty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
         self.queue = self.lane_step_var('queue', inclusive=True)
-        self.queue_prime = self.lane_step_var('queue_prime', inclusive=True, skip_first=True)
         self.potential_queue = self.lane_step_var('potential_queue', inclusive=True, skip_first=True)
         self.potential_flow = self.lane_step_var('potential_flow', inclusive=True, skip_first=True)
-        # self.actual_flow = self.lane_step_var('actual_flow', inclusive=True, skip_first=True)
+        self.actual_flow = self.lane_step_var('actual_flow', inclusive=True, skip_first=True)
         self.arrival = self.lane_step_var('arrival', inclusive=True, skip_first=True)
         self.departure = self.lane_step_var('departure', inclusive=True, skip_first=True)
         self.stops = self.lane_step_var('stops', inclusive=True, skip_first=True)
@@ -199,19 +199,21 @@ class GurobiIntersection:
     def queue_dynamics(self):
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
+                # Potential queue and flow
                 self.model.addConstr(self.potential_queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s])
                 self.model.addGenConstrMin(self.potential_flow[k, s], [self.potential_queue[k, s], self.departure[k, s]])
 
+                # Actual flow
+                self.model.addConstr(self.actual_flow[k, s] <= 1000 * self.colors[k, s, self.GREEN])
+                self.model.addConstr(self.actual_flow[k, s] >= 0)
+                self.model.addConstr(self.actual_flow[k, s] <= self.potential_flow[k, s])
                 self.model.addConstr(
-                    self.queue_prime[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.potential_flow[k, s] * self.colors[k, s, self.GREEN])
-                self.model.addGenConstrIndicator(self.queue_notempty[k, s], False, self.queue_prime[k, s] <= 0)
+                    self.actual_flow[k, s] >= self.potential_flow[k, s] - 1000 * self.notcolors[k, s, self.GREEN])
 
-                self.model.addConstr(self.queue[k, s] <= 1000 * self.queue_notempty[k, s])
-                self.model.addConstr(self.queue[k, s] >= 0)
-
-                self.model.addConstr(self.queue[k, s] <= self.queue_prime[k, s])
-                self.model.addConstr(
-                    self.queue[k, s] >= self.queue_prime[k, s] - 1000 * (1 - self.queue_notempty[k, s]))
+                # Queue
+                self.model.addConstr(self.queue[k, s] == self.potential_queue[k, s] - self.actual_flow[k, s])
+                self.model.addGenConstrIndicator(self.queue_empty[k, s], True, self.queue[k, s] == 0)
+                self.model.addConstr(self.queue_empty[k, s] == 1 - self.queue_notempty[k, s])
 
     #####################
     # Objectives

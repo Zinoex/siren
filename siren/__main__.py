@@ -13,9 +13,7 @@ from sumo.sumo import SUMOSimulation
 
 def test(args):
     def optimize_wrapper():
-        sim = SUMOSimulation(args)
-        configuration = Configuration(**sim.get_configuration())
-        model = GurobiIntersection(configuration, Options())
+        model = GurobiIntersection(super_simple_configuration, Options())
 
         departure = SuperSimpleDeparture()
         arrival = SuperSimpleArrival()
@@ -43,7 +41,6 @@ def sumo(args):
     model = GurobiIntersection(configuration, Options())
     sim.prediction_horizon = model.options.prediction_horizon
 
-    arrival = SuperSimpleArrival()
     departure = SuperSimpleDeparture()
 
     print("Sumo Object created")
