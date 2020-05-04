@@ -1,31 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on Sun 03 May 2020 04:43:29 PM PDT by Eclipse SUMO GUI Version 1.5.0
+<!-- generated on Sun 03 May 2020 07:22:46 PM PDT by Eclipse SUMO GUI Version 1.5.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="sumo/intersections/super_simple_example/road_construction.net.xml"/>
-        <route-files value="sumo/intersections/super_simple_example/road_construction.rou.xml"/>
+        <net-file value="sumo/intersections/aarhus_intersection/osm.net.xml"/>
+        <route-files value="sumo/intersections/aarhus_intersection/osm.rou.xml"/>
+        <additional-files value="sumo/intersections/aarhus_intersection/osm.poly.xml"/>
     </input>
 
     <output>
         <tripinfo-output value="tripinfo.xml"/>
     </output>
 
-    <time>
-        <begin value="0"/>
-    </time>
+    <processing>
+        <ignore-route-errors value="false"/>
+    </processing>
+
+    <routing>
+        <device.rerouting.adaptation-steps value="180"/>
+    </routing>
 
     <report>
         <verbose value="true"/>
+        <duration-log.statistics value="true"/>
         <no-step-log value="true"/>
     </report>
 
     <traci_server>
-        <remote-port value="35979"/>
+        <remote-port value="36531"/>
     </traci_server>
+
+    <gui_only>
+        <gui-settings-file value="sumo/intersections/aarhus_intersection/osm.view.xml"/>
+    </gui_only>
 
 </configuration>
 -->
 
 <tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+    <tripinfo id="bike_straight_b.0" depart="0.00" departLane="24095610_0" departPos="1.70" departSpeed="0.00" departDelay="0.00" arrival="60.00" arrivalLane="502199947#0_0" arrivalPos="129.36" arrivalSpeed="5.07" duration="60.00" routeLength="301.74" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="5.46" rerouteNo="0" devices="tripinfo_bike_straight_b.0" vType="DEFAULT_BIKETYPE" speedFactor="1.02" vaporized=""/>
+</tripinfos>

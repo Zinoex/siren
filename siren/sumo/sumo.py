@@ -12,8 +12,8 @@ class SUMOSimulation:
     color_string_map_reverse_list = ["G", "r", "y", "u"]
 
     def __init__(self, options, max_iterations=10000,
-                 config_file='sumo/intersections/super_simple_example/road_construction.sumocfg',
-                 json_description_file="sumo/intersections/super_simple_example/road_construction.desc.json"):
+                 config_file='sumo/intersections/aarhus_intersection/osm.sumocfg',
+                 json_description_file="sumo/intersections/aarhus_intersection/osm.desc.json"):
         self.simulation_step = 0
         self.time_step_len = 1.0  # Temporary (seconds per timestep)
         self.prediction_horizon = 10  # Temporary

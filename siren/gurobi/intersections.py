@@ -5,7 +5,8 @@ import numpy as np
 
 class SuperSimpleArrival:
     def __getitem__(self, item):
-        return 1
+        k, s = item
+        return s + 1
 
 
 class SuperSimpleDeparture:

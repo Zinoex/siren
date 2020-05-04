@@ -48,6 +48,9 @@ class GurobiIntersection:
         self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
         self.queue = self.lane_step_var('queue', inclusive=True)
         self.queue_prime = self.lane_step_var('queue_prime', inclusive=True, skip_first=True)
+        self.potential_queue = self.lane_step_var('potential_queue', inclusive=True, skip_first=True)
+        self.potential_flow = self.lane_step_var('potential_flow', inclusive=True, skip_first=True)
+        # self.actual_flow = self.lane_step_var('actual_flow', inclusive=True, skip_first=True)
         self.arrival = self.lane_step_var('arrival', inclusive=True, skip_first=True)
         self.departure = self.lane_step_var('departure', inclusive=True, skip_first=True)
         self.stops = self.lane_step_var('stops', inclusive=True, skip_first=True)
@@ -86,10 +89,10 @@ class GurobiIntersection:
         wait_objective = self.wait_time_objective()
         green_objective = self.green_objective()
 
-        self.model.setObjectiveN(queue_objective, 0, weight=self.options.queue_weight)
-        self.model.setObjectiveN(stops_objective, 1, weight=self.options.stops_weight)
-        self.model.setObjectiveN(wait_objective, 2, weight=self.options.wait_weight)
-        self.model.setObjectiveN(green_objective, 3, weight=self.options.green_weight)
+        self.model.setObjective(queue_objective * self.options.queue_weight +
+                                stops_objective * self.options.stops_weight +
+                                wait_objective * self.options.wait_weight +
+                                green_objective * self.options.green_weight)
 
         self.initial_set = False
         self.initial_constraints = np.empty((6 + self.num_colors, self.configuration.num_signals), dtype=object)
@@ -101,6 +104,7 @@ class GurobiIntersection:
     def optimize(self, queue, arrival, departure, verbose=False):
         self.init(queue, arrival, departure)
 
+        self.model.reset()
         self.model.optimize()
 
         if verbose:
@@ -149,8 +153,8 @@ class GurobiIntersection:
 
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
-                self.arrival_constraints[k - 1, s] = self.model.addConstr(self.arrival[k, s] == arrival[k - 1, s])
-                self.departure_constraints[k - 1, s] = self.model.addConstr(self.departure[k, s] == departure[k - 1, s])
+                self.arrival_constraints[k - 1, s] = self.model.addConstr(self.arrival[k, s] == int(arrival[k - 1, s]))
+                self.departure_constraints[k - 1, s] = self.model.addConstr(self.departure[k, s] == int(departure[k - 1, s]))
 
         for s in range(self.configuration.num_signals):
             self.initial_constraints[0, s] = self.model.addConstr(self.green_timer[0, s] == self.initial_green[s])
@@ -195,9 +199,11 @@ class GurobiIntersection:
     def queue_dynamics(self):
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
+                self.model.addConstr(self.potential_queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s])
+                self.model.addGenConstrMin(self.potential_flow[k, s], [self.potential_queue[k, s], self.departure[k, s]])
+
                 self.model.addConstr(
-                    self.queue_prime[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.departure[k, s] *
-                    self.colors[k, s, self.GREEN])
+                    self.queue_prime[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.potential_flow[k, s] * self.colors[k, s, self.GREEN])
                 self.model.addGenConstrIndicator(self.queue_notempty[k, s], False, self.queue_prime[k, s] <= 0)
 
                 self.model.addConstr(self.queue[k, s] <= 1000 * self.queue_notempty[k, s])

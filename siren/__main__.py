@@ -13,17 +13,21 @@ from sumo.sumo import SUMOSimulation
 
 def test(args):
     def optimize_wrapper():
-        model = GurobiIntersection(super_simple_configuration, Options())
+        sim = SUMOSimulation(args)
+        configuration = Configuration(**sim.get_configuration())
+        model = GurobiIntersection(configuration, Options())
 
         departure = SuperSimpleDeparture()
         arrival = SuperSimpleArrival()
-        queue = np.array([3, 12])
+        queue = np.array([0, 0])
 
         for i in range(args.iterations):
             lights = model.optimize(queue, arrival, departure, verbose=args.verbose)
 
             for s in range(super_simple_configuration.num_signals):
                 queue[s] += arrival[1, s] - departure[1, s] * lights[s, GurobiIntersection.GREEN]
+                if queue[s] < 0:
+                    queue[s] = 0
 
     print("Execution took {}s".format(timeit.timeit(optimize_wrapper, number=1)))
 
@@ -39,6 +43,7 @@ def sumo(args):
     model = GurobiIntersection(configuration, Options())
     sim.prediction_horizon = model.options.prediction_horizon
 
+    arrival = SuperSimpleArrival()
     departure = SuperSimpleDeparture()
 
     print("Sumo Object created")
@@ -52,6 +57,10 @@ def sumo(args):
 
         arr = sim.arrival_prediction()
         light_matrix = model.optimize(queue, arr, departure, verbose=args.verbose)
+        # for s in range(super_simple_configuration.num_signals):
+        #     queue[s] += arr[1, s] - departure[1, s] * light_matrix[s, GurobiIntersection.GREEN]
+        #     if queue[s] < 0:
+        #         queue[s] = 0
         sim.set_lights(light_matrix)
 
 

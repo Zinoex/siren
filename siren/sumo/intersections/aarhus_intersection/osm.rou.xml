@@ -39,29 +39,28 @@
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
     <!-- Routes are in same order as the traffic signals -->
-    <route id="route_0" edges="gneE19 gneE16 gneE15"/>
-        <flow id="flow_0_v"  route="route_0" type="DEFAULT_VEHTYPE"  vehsPerHour="360"/>
-    <route id="route_1" edges="gneE19 gneE16 gneE4"/>
-        <flow id="flow_1_v"  route="route_1" type="DEFAULT_VEHTYPE"  vehsPerHour="360"/>
-    <route id="route_2" edges="-502199947#0 35279828 gneE6"/>
-        <flow id="flow_2_v"  route="route_2" type="DEFAULT_VEHTYPE"  vehsPerHour="360"/>
-    <route id="route_3" edges="-502199947#0 35279828 gneE15"/>
-        <flow id="flow_3_v"  route="route_3" type="DEFAULT_VEHTYPE"  vehsPerHour="360"/>
-    <route id="route_4" edges="gneE14 gneE13 gneE4 502199947#0"/>
-        <flow id="flow_4_v"  route="route_4" type="DEFAULT_VEHTYPE"  vehsPerHour="360"/>
-        <flow id="flow_4_b"  route="route_4" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
-    <route id="route_5" edges="gneE14 gneE13 gneE6"/>
-        <flow id="flow_5_v"  route="route_5" type="DEFAULT_VEHTYPE"  vehsPerHour="360"/>
-        <flow id="flow_5_b"  route="route_5" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
-    <route id="route_6" edges="24095610 gneE4 502199947#0"/>
-        <flow id="flow_6_b"  route="route_6" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
-    <route id="route_7" edges="24095610 gneE4"/>
-        <flow id="flow_7_b"  route="route_7" type="DEFAULT_BIKETYPE"  vehsPerHour="360"/>
+    <route id="a1_straight" edges="gneE19 gneE16 gneE15"/>
+        <flow id="a1_straight_v"  route="a1_straight" type="DEFAULT_VEHTYPE"  vehsPerHour="900"/>
+    <route id="a1_left" edges="gneE19 gneE16 gneE4"/>
+        <flow id="a1_left_v"  route="a1_left" type="DEFAULT_VEHTYPE"  vehsPerHour="180"/>
+    <route id="b_right" edges="-502199947#0 35279828 gneE6"/>
+        <flow id="b_right_v"  route="b_right" type="DEFAULT_VEHTYPE"  vehsPerHour="60"/>
+        <flow id="b_right_b"  route="b_right" type="DEFAULT_BIKETYPE"  vehsPerHour="15"/>
+    <route id="b_left" edges="-502199947#0 35279828 gneE15"/>
+        <flow id="b_left_v"  route="b_left" type="DEFAULT_VEHTYPE"  vehsPerHour="180"/>
+    <route id="a2_right" edges="gneE14 gneE13 gneE4 502199947#0"/>
+        <flow id="a2_right_v"  route="a2_right" type="DEFAULT_VEHTYPE"  vehsPerHour="180"/>
+        <flow id="a2_right_b"  route="a2_right" type="DEFAULT_BIKETYPE"  vehsPerHour="10"/>
+    <route id="a2_straight" edges="gneE14 gneE13 gneE6"/>
+        <flow id="a2_straight_v"  route="a2_straight" type="DEFAULT_VEHTYPE"  vehsPerHour="900"/>
+        <flow id="a2_straight_b"  route="a2_straight" type="DEFAULT_BIKETYPE"  vehsPerHour="5"/>
+    <route id="bike_straight" edges="24095610 gneE4 502199947#0"/>
+        <flow id="bike_straight_b"  route="bike_straight" type="DEFAULT_BIKETYPE"  vehsPerHour="15"/>
     <!-- <route id="route_8" edges="gneE13 gneE6"/>
         <flow id="flow_8_b"  route="route_8" type="DEFAULT_PEDTYPE"  vehsPerHour="360"/> -->
 
 
-    <personFlow id="crossWalk" begin="0" personsPerHour="60">
+    <personFlow id="crossWalk" begin="0" personsPerHour="15">
         <walk from="gneE13" to="gneE6"/>
     </personFlow>
 </routes>
