@@ -1,6 +1,6 @@
 import argparse
 import timeit
-import asyncio
+import time
 
 import numpy as np
 
@@ -35,7 +35,7 @@ def iis():
     model.iis(np.array([3, 12]), SuperSimpleArrival(), ConstantDeparture())
 
 
-async def sumo(args):
+def sumo(args):
     sim = SUMOSimulation(args)
     configuration = Configuration(**sim.get_configuration())
     model = GurobiIntersection(configuration, Options())
@@ -49,32 +49,25 @@ async def sumo(args):
     sim_continue_flag = True
     sim.step()
 
-    async def step_simulation():
-        for i in range(20):
-            continue_flag = sim.step()
-
-            if not continue_flag:
-                return False
-
-            await asyncio.sleep(0.05)
-
-        return True
-
     async def optimize(q, a, d):
-        return model.optimize(queue, arr, departure, verbose=args.verbose)
+        return
 
     while sim_continue_flag:
+        for i in range(20):
+            t1 = time.time()
+            sim_continue_flag = sim.step()
+            t2 = time.time()
+
+            if not sim_continue_flag:
+                return False
+
+            time.sleep(0.05 - (t2 - t1))
 
         queue = sim.get_queue()
         print("Queue: {}".format(queue))
 
         arr = sim.arrival_prediction()
-
-        task1 = asyncio.create_task(step_simulation())
-        task2 = asyncio.create_task(optimize(queue, arr, departure))
-
-        sim_continue_flag = await task1
-        light_matrix = await task2
+        light_matrix = model.optimize(queue, arr, departure, verbose=args.verbose)
 
         sim.set_lights(light_matrix)
 
@@ -105,7 +98,7 @@ def main():
     args = parse_arguments()
 
     if args.sumo:
-        asyncio.run(sumo(args))
+        sumo(args)
     elif args.iis:
         iis()
     else:

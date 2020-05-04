@@ -16,4 +16,8 @@
         <no-step-log value="true"/>
     </report>
 
+    <gui_only>
+        <gui-settings-file value="road_construction.view.xml"/>
+    </gui_only>
+
 </configuration>
