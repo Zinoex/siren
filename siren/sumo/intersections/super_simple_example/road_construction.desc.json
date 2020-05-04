@@ -20,6 +20,7 @@
     "conflict_matrix": [
         [0, 1],
         [1, 0]
-    ], 
+    ],
+    "departure_rate": [1, 1],
     "SUMO_lane_mapping": [0, 1]
 }

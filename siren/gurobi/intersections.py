@@ -9,11 +9,6 @@ class SuperSimpleArrival:
         return s + 1
 
 
-class SuperSimpleDeparture:
-    def __getitem__(self, item):
-        return 3
-
-
 super_simple_configuration = Configuration(
     2,
     np.array([[0, 1], [1, 0]]),

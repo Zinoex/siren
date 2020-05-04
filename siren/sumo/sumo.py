@@ -35,7 +35,7 @@ class SUMOSimulation:
         else:
             self.sumoBinary = checkBinary("sumo-gui")
             print("GUI detected.")
-        self.sumoCmd = [self.sumoBinary, "-c", config_file, "--tripinfo-output", "tripinfo.xml"]
+        self.sumoCmd = [self.sumoBinary, "-c", config_file, "--tripinfo-output", "tripinfo.xml", '--step-length', '0.05']
         self.parse_intersection_description()
 
     @staticmethod
@@ -59,6 +59,7 @@ class SUMOSimulation:
         self.config_dict["yellow_time"] = np.array(desc_data["time_vectors"]["yellow"])
         self.config_dict["amber_time"] = np.array(desc_data["time_vectors"]["amber"])
         self.config_dict["min_green"] = np.array(desc_data["time_vectors"]["min_green"])
+        self.departure_rate = np.array(desc_data['departure_rate'])
 
         self.lane_mapping_vec = desc_data["SUMO_lane_mapping"]
 

@@ -1,12 +1,12 @@
 import argparse
 import timeit
+import asyncio
 
 import numpy as np
 
 from gurobi.model import GurobiIntersection
-from gurobi.intersections import SuperSimpleArrival, \
-    SuperSimpleDeparture, super_simple_configuration
-from gurobi.structures import Options, Configuration
+from gurobi.intersections import SuperSimpleArrival, super_simple_configuration
+from gurobi.structures import Options, Configuration, PerLaneDeparture, ConstantDeparture
 
 from sumo.sumo import SUMOSimulation
 
@@ -15,7 +15,7 @@ def test(args):
     def optimize_wrapper():
         model = GurobiIntersection(super_simple_configuration, Options())
 
-        departure = SuperSimpleDeparture()
+        departure = ConstantDeparture()
         arrival = SuperSimpleArrival()
         queue = np.array([0, 0])
 
@@ -32,32 +32,50 @@ def test(args):
 
 def iis():
     model = GurobiIntersection(super_simple_configuration, Options())
-    model.iis(np.array([3, 12]), SuperSimpleArrival(), SuperSimpleDeparture())
+    model.iis(np.array([3, 12]), SuperSimpleArrival(), ConstantDeparture())
 
 
-def sumo(args):
+async def sumo(args):
     sim = SUMOSimulation(args)
     configuration = Configuration(**sim.get_configuration())
     model = GurobiIntersection(configuration, Options())
     sim.prediction_horizon = model.options.prediction_horizon
 
-    departure = SuperSimpleDeparture()
+    departure = PerLaneDeparture(sim.departure_rate)
 
     print("Sumo Object created")
     sim.start()
 
     sim_continue_flag = True
+    sim.step()
+
+    async def step_simulation():
+        for i in range(20):
+            continue_flag = sim.step()
+
+            if not continue_flag:
+                return False
+
+            await asyncio.sleep(0.05)
+
+        return True
+
+    async def optimize(q, a, d):
+        return model.optimize(queue, arr, departure, verbose=args.verbose)
+
     while sim_continue_flag:
-        sim_continue_flag = sim.step()
+
         queue = sim.get_queue()
         print("Queue: {}".format(queue))
 
         arr = sim.arrival_prediction()
-        light_matrix = model.optimize(queue, arr, departure, verbose=args.verbose)
-        # for s in range(super_simple_configuration.num_signals):
-        #     queue[s] += arr[1, s] - departure[1, s] * light_matrix[s, GurobiIntersection.GREEN]
-        #     if queue[s] < 0:
-        #         queue[s] = 0
+
+        task1 = asyncio.create_task(step_simulation())
+        task2 = asyncio.create_task(optimize(queue, arr, departure))
+
+        sim_continue_flag = await task1
+        light_matrix = await task2
+
         sim.set_lights(light_matrix)
 
 
@@ -87,7 +105,7 @@ def main():
     args = parse_arguments()
 
     if args.sumo:
-        sumo(args)
+        asyncio.run(sumo(args))
     elif args.iis:
         iis()
     else:

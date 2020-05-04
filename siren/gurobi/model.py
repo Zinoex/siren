@@ -46,7 +46,6 @@ class GurobiIntersection:
         self.notgreen_timer = self.lane_step_var('notgreen_timer')
 
         self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
-        self.queue_empty = self.lane_step_var('queue_empty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
         self.queue = self.lane_step_var('queue', inclusive=True)
         self.potential_queue = self.lane_step_var('potential_queue', inclusive=True, skip_first=True)
         self.potential_flow = self.lane_step_var('potential_flow', inclusive=True, skip_first=True)
@@ -212,8 +211,7 @@ class GurobiIntersection:
 
                 # Queue
                 self.model.addConstr(self.queue[k, s] == self.potential_queue[k, s] - self.actual_flow[k, s])
-                self.model.addGenConstrIndicator(self.queue_empty[k, s], True, self.queue[k, s] == 0)
-                self.model.addConstr(self.queue_empty[k, s] == 1 - self.queue_notempty[k, s])
+                self.model.addGenConstrIndicator(self.queue_notempty[k, s], True, self.queue[k, s] >= 1)
 
     #####################
     # Objectives
