@@ -62,7 +62,8 @@ def sumo(args):
             if not sim_continue_flag:
                 return False
 
-            time.sleep(0.05 - (t2 - t1))
+            if t2 - t1 < 0.05:
+                time.sleep(0.05 - (t2 - t1))
 
         light_matrix = model.optimize(queue, arr, departure, verbose=args.verbose)
 
