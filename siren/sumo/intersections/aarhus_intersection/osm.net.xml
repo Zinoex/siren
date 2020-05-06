@@ -234,13 +234,13 @@
     </edge>
 
     <tlLogic id="gneJ29" type="static" programID="0" offset="0">
-        <phase duration="2"  state="uurrrrrrruuruurrr"/>
-        <phase duration="38" state="ggrrrrrrrggrggrgg"/>
-        <phase duration="4"  state="yyrrrrrrryyryyrrr"/>
+        <phase duration="2"  state="uurrrrrrruuuuurrr"/>
+        <phase duration="38" state="ggrrrrrrrgggggrgg"/>
+        <phase duration="4"  state="yyrrrrrrryyyyyrrr"/>
         <phase duration="2"  state="rrrrrrrrrrrrrrrrr"/>
-        <phase duration="2"  state="rrruuuuuurrurrurr"/>
-        <phase duration="18" state="rrrggggggrrgrrgrr"/>
-        <phase duration="4"  state="rrryyyyyyrryrryrr"/>
+        <phase duration="2"  state="rrruuuuuurrrrrurr"/>
+        <phase duration="18" state="rrrggggggrrrrrgrr"/>
+        <phase duration="4"  state="rrryyyyyyrrrrryrr"/>
         <phase duration="2"  state="rrrrrrrrrrrrrrrrr"/>
         <phase duration="2"  state="uuurrrrrrrrrrrrrr"/>
         <phase duration="8"  state="gggrrrrrrrrrrrrrr"/>

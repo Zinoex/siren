@@ -50,17 +50,17 @@
     <route edges="-502199947#0 35279828 gneE15" color="yellow" id="b_left"/>
     <route edges="-502199947#0 35279828 gneE6" color="yellow" id="b_right"/>
     <route edges="24095610 gneE4 502199947#0" color="yellow" id="bike_straight"/>
-    <flow id="a1_left_v" begin="0.00" route="a1_left" end="864000.00" vehsPerHour="120.00"/>
-    <flow id="a1_straight_v" begin="0.00" route="a1_straight" end="864000.00" vehsPerHour="900.00"/>
-    <flow id="a2_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="10.00"/>
-    <flow id="a2_right_v" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="180.00"/>
-    <flow id="a2_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="5.00"/>
-    <flow id="a2_straight_v" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="900.00"/>
-    <flow id="b_left_v" begin="0.00" route="b_left" end="86400.00" vehsPerHour="180.00"/>
-    <flow id="b_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="b_right" end="864000.00" vehsPerHour="15.00"/>
-    <flow id="b_right_v" begin="0.00" route="b_right" end="864000.00" vehsPerHour="60.00"/>
-    <flow id="bike_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="bike_straight" end="864000.00" vehsPerHour="15.00"/>
-    <personFlow id="personFlow_1" begin="0.00" end="86400.00" personsPerHour="15.00">
+    <flow id="a1_left_v" begin="0.00" route="a1_left" end="864000.00" probability="0.0333333333333"/>
+    <flow id="a1_straight_v" begin="0.00" route="a1_straight" end="864000.00" probability="0.25"/>
+    <flow id="a2_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_right" end="864000.00" probability="0.00277777777778"/>
+    <flow id="a2_right_v" begin="0.00" route="a2_right" end="864000.00" probability="0.05"/>
+    <flow id="a2_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_straight" end="864000.00" probability="0.00138888888889"/>
+    <flow id="a2_straight_v" begin="0.00" route="a2_straight" end="864000.00" probability="0.25"/>
+    <flow id="b_left_v" begin="0.00" route="b_left" end="86400.00" probability="0.05"/>
+    <flow id="b_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="b_right" end="864000.00" probability="0.00416666666667"/>
+    <flow id="b_right_v" begin="0.00" route="b_right" end="864000.00" probability="0.0166666666667"/>
+    <flow id="bike_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="bike_straight" end="864000.00" probability="0.00416666666667"/>
+    <personFlow id="personFlow_1" begin="0.00" end="86400.00" probability="0.00416666666667">
         <personTrip from="gneE13" to="gneE6"/>
     </personFlow>
 </routes>

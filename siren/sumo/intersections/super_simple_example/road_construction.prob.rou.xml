@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on Tue 05 May 2020 07:33:39 PM PDT by Eclipse SUMO netedit Version 1.5.0
+<!-- generated on Sun 03 May 2020 11:14:28 PM PDT by Eclipse SUMO netedit Version 1.5.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
-        <sumo-net-file value="/home/zinoex/Documents/siren/siren/sumo/intersections/simple_example/cross.net.xml"/>
+        <sumo-net-file value="/home/zinoex/Documents/siren/siren/sumo/intersections/super_simple_example/road_construction.net.xml"/>
     </input>
 
     <output>
-        <output-file value="/home/zinoex/Documents/siren/siren/sumo/intersections/simple_example/cross.net.xml"/>
+        <output-file value="/home/zinoex/Documents/siren/siren/sumo/intersections/super_simple_example/road_construction.net.xml"/>
     </output>
 
     <processing>
@@ -20,8 +20,8 @@
 
     <junctions>
         <no-turnarounds value="true"/>
-        <junctions.corner-detail value="0"/>
-        <junctions.limit-turn-speed value="-1"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
         <rectangular-lane-cut value="false"/>
     </junctions>
 
@@ -30,7 +30,7 @@
     </pedestrian>
 
     <netedit>
-        <route-files value="/home/zinoex/Documents/siren/siren/sumo/intersections/simple_example/cross.rou.xml"/>
+        <route-files value="/home/zinoex/Documents/siren/siren/sumo/intersections/super_simple_example/road_construction.rou.xml"/>
     </netedit>
 
     <report>
@@ -41,8 +41,6 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <flow id="east_west" begin="0.00" from="2i" to="1o" end="3600.00" number="600"/>
-    <flow id="north_south" begin="0.00" from="4i" to="3o" end="3600.00" number="300"/>
-    <flow id="south_north" begin="0.00" from="3i" to="4o" end="3600.00" number="300"/>
-    <flow id="west_east" begin="0.00" from="1i" to="2o" end="3600.00" number="600"/>
+    <flow id="flow_0" begin="0.00" from="gneE9" to="gneE10" end="3600.00" probability="0.222222222222" type="DEFAULT_VEHTYPE"/>
+    <flow id="flow_1" begin="0.00" departSpeed="speedLimit" from="gneE7" to="gneE8" end="3600.00" probability="0.166666666667" type="DEFAULT_VEHTYPE"/>
 </routes>

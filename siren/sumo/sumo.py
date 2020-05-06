@@ -33,6 +33,7 @@ class SUMOSimulation:
                          '--summary', 'data/{}/summary.xml'.format(options.folder_prefix),
                          '--device.emissions.probability', '1',
                          '-t',
+                         '--seed', '42',
                          '--step-length', '0.05']
 
     @staticmethod

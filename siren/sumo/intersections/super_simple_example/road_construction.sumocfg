@@ -4,7 +4,8 @@
 
     <input>
         <net-file value="road_construction.net.xml"/>
-        <route-files value="road_construction.rou.xml"/>
+        <!--<route-files value="road_construction.rou.xml"/>-->
+        <route-files value="road_construction.prob.rou.xml"/>
     </input>
 
     <time>

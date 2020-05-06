@@ -115,7 +115,7 @@ def sumo(args):
                 sim.set_lights(light_matrix)
     finally:
         if not args.timed:
-            worker_process.join()
+            worker_process.kill()
 
 
 def parse_arguments():
