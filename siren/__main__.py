@@ -142,7 +142,7 @@ def parse_arguments():
     parser.add_argument('--timed', action='store_true', help='Run sumo simulation with timed control.')
     parser.add_argument('--no-delay', action='store_true', help='Run sumo simulation without real-time delay.')
     parser.add_argument('-p', '--prediction-horizon', type=positive_type, default=30, help='Set prediction horizon.')
-    parser.add_argument('-c', '--control-horizon', type=positive_type, default=30, help='Set control horizon')
+    parser.add_argument('-c', '--control-horizon', type=positive_type, default=20, help='Set control horizon')
     parser.add_argument('--queue-weight', type=float, default=1, help='Set queue weight.')
     parser.add_argument('--stops-weight', type=float, default=2, help='Set stops weight.')
     parser.add_argument('--wait-weight', type=float, default=0.01, help='Set wait weight (should be small).')

@@ -65,7 +65,12 @@
     </edge>
 
     <tlLogic id="gneJ14" type="static" programID="0" offset="0">
-        <phase duration="80" state="rr"/>
+        <phase duration="40" state="gr"/>
+        <phase duration="4" state="yr"/>
+        <phase duration="2" state="rr"/>
+        <phase duration="30" state="rg"/>
+        <phase duration="4" state="ry"/>
+        <phase duration="2" state="rr"/>
     </tlLogic>
 
     <junction id="gneJ13" type="dead_end" x="393.50" y="180.76" incLanes="gneE10_0" intLanes="" shape="393.50,180.76 393.50,183.96 393.50,180.76"/>
