@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on Sun 03 May 2020 11:41:17 PM PDT by Eclipse SUMO netedit Version 1.5.0
+<!-- generated on Tue 05 May 2020 12:56:44 AM PDT by Eclipse SUMO netedit Version 1.5.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
@@ -50,15 +50,17 @@
     <route edges="-502199947#0 35279828 gneE15" color="yellow" id="b_left"/>
     <route edges="-502199947#0 35279828 gneE6" color="yellow" id="b_right"/>
     <route edges="24095610 gneE4 502199947#0" color="yellow" id="bike_straight"/>
-    <flow id="a1_left_v" begin="0.00" end="864000.00" route="a1_left" vehsPerHour="180.00"/>
-    <flow id="a1_straight_v" begin="0.00" end="864000.00" route="a1_straight" vehsPerHour="900.00"/>
-    <flow id="a2_right_b" type="DEFAULT_BIKETYPE" end="864000.00" begin="0.00" route="a2_right" vehsPerHour="10.00"/>
-    <flow id="a2_right_v" begin="0.00" end="864000.00" route="a2_right" vehsPerHour="180.00"/>
-    <flow id="a2_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" end="864000.00" route="a2_straight" vehsPerHour="5.00"/>
-    <flow id="a2_straight_v" begin="0.00" end="864000.00" route="a2_straight" vehsPerHour="900.00"/>
+    <flow id="a1_left_v" begin="0.00" route="a1_left" end="864000.00" vehsPerHour="180.00"/>
+    <flow id="a1_straight_v" begin="0.00" route="a1_straight" end="864000.00" vehsPerHour="900.00"/>
+    <flow id="a2_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="10.00"/>
+    <flow id="a2_right_v" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="180.00"/>
+    <flow id="a2_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="5.00"/>
+    <flow id="a2_straight_v" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="900.00"/>
     <flow id="b_left_v" begin="0.00" route="b_left" end="86400.00" vehsPerHour="180.00"/>
-    <flow id="b_right_b" type="DEFAULT_BIKETYPE" begin="0.00" end="864000.00" route="b_right" vehsPerHour="15.00"/>
-    <flow id="b_right_v" begin="0.00" end="864000.00" route="b_right" vehsPerHour="60.00"/>
-    <flow id="bike_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" end="864000.00" route="bike_straight" vehsPerHour="15.00"/>
-<!--    <personFlow id="crossWalk" begin="0.00" end="864000.00" vehsPerHour="15.00"/>-->
+    <flow id="b_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="b_right" end="864000.00" vehsPerHour="15.00"/>
+    <flow id="b_right_v" begin="0.00" route="b_right" end="864000.00" vehsPerHour="60.00"/>
+    <flow id="bike_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="bike_straight" end="864000.00" vehsPerHour="15.00"/>
+    <personFlow id="personFlow_1" begin="0.00" end="86400.00" personsPerHour="15.00">
+        <personTrip from="gneE13" to="gneE6"/>
+    </personFlow>
 </routes>

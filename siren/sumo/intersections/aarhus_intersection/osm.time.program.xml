@@ -40,18 +40,17 @@
 
 <additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
     <tlLogic id="gneJ29" type="static" programID="0" offset="0">
-        <phase duration="2" state="rrrrrrrrrrrrrru"/>
-        <phase duration="6" state="rrrrrrrrrrrrrrG"/>
-        <phase duration="4" state="rrrrrrrrrrrrrry"/>
-        <phase duration="4" state="rrrrrrrrrrrrrrr"/>
-        <phase duration="2" state="rrruuuuuurrrrrr"/>
-        <phase duration="10" state="rrrggGgGGrrrrrr"/>
-        <phase duration="4" state="rrryyyyyyrrrrrr"/>
-        <phase duration="2" state="uuurrrrrrrrrrrr"/>
-        <phase duration="10" state="GGGrrrrrrrrrrrr"/>
-        <phase duration="4" state="GGyrrrrrrrrrrrr"/>
-        <phase duration="2" state="GGrrrrrrruuuuur"/>
-        <phase duration="32" state="GGrrrrrrrGGgGGr"/>
-        <phase duration="4" state="yyrrrrrrryyyyyr"/>
+        <phase duration="2"  state="uurrrrrrruuruurrr"/>
+        <phase duration="38" state="ggrrrrrrrggrggrgg"/>
+        <phase duration="4"  state="yyrrrrrrryyryyrrr"/>
+        <phase duration="2"  state="rrrrrrrrrrrrrrrrr"/>
+        <phase duration="2"  state="rrruuuuuurrurrurr"/>
+        <phase duration="18" state="rrrggggggrrgrrgrr"/>
+        <phase duration="4"  state="rrryyyyyyrryrryrr"/>
+        <phase duration="2"  state="rrrrrrrrrrrrrrrrr"/>
+        <phase duration="2"  state="uuurrrrrrrrrrrrrr"/>
+        <phase duration="8"  state="gggrrrrrrrrrrrrrr"/>
+        <phase duration="4"  state="yyyrrrrrrrrrrrrrr"/>
+        <phase duration="2"  state="rrrrrrrrrrrrrrrrr"/>
     </tlLogic>
 </additional>

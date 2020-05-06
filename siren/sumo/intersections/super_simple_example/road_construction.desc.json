@@ -21,6 +21,7 @@
         [0, 1],
         [1, 0]
     ],
+    "maximum_wait": [300, 300],
     "departure_rate": [1, 1],
     "SUMO_lane_mapping": [0, 1]
 }

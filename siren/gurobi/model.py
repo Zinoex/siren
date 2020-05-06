@@ -75,6 +75,7 @@ class GurobiIntersection:
         self.yellow_transition_constraints()
         self.amber_transition_constraints()
         self.control_horizon_constraints()
+        self.maximum_wait()
 
         # Add timing constraints
         self.min_green_constraints()
@@ -196,6 +197,7 @@ class GurobiIntersection:
     # System dynamics
     #####################
     def queue_dynamics(self):
+        queue_upper_bound = 100
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
                 # Potential queue and flow
@@ -203,15 +205,16 @@ class GurobiIntersection:
                 self.model.addGenConstrMin(self.potential_flow[k, s], [self.potential_queue[k, s], self.departure[k, s]])
 
                 # Actual flow
-                self.model.addConstr(self.actual_flow[k, s] <= 1000 * self.colors[k, s, self.GREEN])
+                self.model.addConstr(self.actual_flow[k, s] <= queue_upper_bound * self.colors[k, s, self.GREEN])
                 self.model.addConstr(self.actual_flow[k, s] >= 0)
                 self.model.addConstr(self.actual_flow[k, s] <= self.potential_flow[k, s])
                 self.model.addConstr(
-                    self.actual_flow[k, s] >= self.potential_flow[k, s] - 1000 * self.notcolors[k, s, self.GREEN])
+                    self.actual_flow[k, s] >= self.potential_flow[k, s] - queue_upper_bound * self.notcolors[k, s, self.GREEN])
 
                 # Queue
                 self.model.addConstr(self.queue[k, s] == self.potential_queue[k, s] - self.actual_flow[k, s])
-                self.model.addGenConstrIndicator(self.queue_notempty[k, s], True, self.queue[k, s] >= 1)
+                self.model.addConstr(self.queue[k, s] >= self.queue_notempty[k, s])
+                self.model.addConstr(self.queue[k, s] <= queue_upper_bound * self.queue_notempty[k, s])
 
     #####################
     # Objectives
@@ -220,15 +223,16 @@ class GurobiIntersection:
         return self.queue[1:, :].sum()
 
     def stops_objective(self):
+        stops_upper_bound = 100
         objective = gp.LinExpr()
 
         for k in range(1, self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
-                self.model.addConstr(self.stops[k, s] <= 1000 * self.notcolors[k, s, self.GREEN])
+                self.model.addConstr(self.stops[k, s] <= stops_upper_bound * self.notcolors[k, s, self.GREEN])
                 self.model.addConstr(self.stops[k, s] >= 0)
 
                 self.model.addConstr(self.stops[k, s] <= self.arrival[k, s])
-                self.model.addConstr(self.stops[k, s] >= self.arrival[k, s] - 1000 * self.colors[k, s, self.GREEN])
+                self.model.addConstr(self.stops[k, s] >= self.arrival[k, s] - stops_upper_bound * self.colors[k, s, self.GREEN])
 
                 objective.add(self.stops[k, s])
 
@@ -298,6 +302,12 @@ class GurobiIntersection:
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
                     self.model.addConstr(self.colors[k, s, c] == self.colors[k + 1, s, c])
+
+    def maximum_wait(self):
+        for s in range(self.configuration.num_signals):
+            if self.configuration.maximum_wait[s] > 0:
+                for k in range(0, self.options.prediction_horizon):
+                    self.model.addConstr(self.wait_time[k, s] <= self.configuration.maximum_wait[s] - 1)
 
     #########################################
     # Timer dynamics

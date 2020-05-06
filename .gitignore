@@ -136,3 +136,6 @@ dmypy.json
 
 **/slprj
 *.slxc
+
+# Experiments
+siren/data
