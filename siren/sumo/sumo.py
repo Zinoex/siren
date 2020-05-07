@@ -1,11 +1,8 @@
 import os
 import sys
-import argparse
-import json
 from sumolib import checkBinary
 import traci
 import numpy as np
-import time
 
 
 class SUMOSimulation:
@@ -32,7 +29,6 @@ class SUMOSimulation:
                          '--tripinfo-output', 'data/{}/tripinfo.xml'.format(options.folder_prefix),
                          '--summary', 'data/{}/summary.xml'.format(options.folder_prefix),
                          '--device.emissions.probability', '1',
-                         '-t',
                          '--seed', '42',
                          '--step-length', '0.05']
 
