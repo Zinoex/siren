@@ -4,3 +4,11 @@ gurobipy
 numpy
 scipy
 traci
+jupyter
+jupyterlab
+pandas
+matplotlib
+seaborn
+beautifulsoup4
+tqdm
+lxml
