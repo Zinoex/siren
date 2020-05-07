@@ -88,11 +88,13 @@ class GurobiIntersection:
         stops_objective = self.stops_objective()
         wait_objective = self.wait_time_objective()
         green_objective = self.green_objective()
+        throughput_objective = self.throughput_objective()
 
         self.model.setObjective(queue_objective * self.options.queue_weight +
                                 stops_objective * self.options.stops_weight +
                                 wait_objective * self.options.wait_weight +
-                                green_objective * self.options.green_weight)
+                                green_objective * self.options.green_weight +
+                                throughput_objective * self.options.throughput_weight)
 
         self.initial_set = False
         self.initial_constraints = np.empty((6 + self.num_colors, self.configuration.num_signals), dtype=object)
@@ -243,6 +245,9 @@ class GurobiIntersection:
 
     def green_objective(self):
         return self.notcolors[1:, :, self.GREEN].sum()
+
+    def throughput_objective(self):
+        return -self.actual_flow[1:, :].sum()
 
     #########################
     # General constraints

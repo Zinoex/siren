@@ -41,8 +41,8 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <flow id="east_west" begin="0.00" from="2i" to="1o" end="3600.00" number="600"/>
-    <flow id="north_south" begin="0.00" from="4i" to="3o" end="3600.00" number="300"/>
-    <flow id="south_north" begin="0.00" from="3i" to="4o" end="3600.00" number="300"/>
-    <flow id="west_east" begin="0.00" from="1i" to="2o" end="3600.00" number="600"/>
+    <flow id="east_west" departLane="allowed" departSpeed="speedLimit" begin="0.00" from="2i" to="1o" end="3600.00" number="600"/>
+    <flow id="north_south" departLane="allowed" departSpeed="speedLimit" begin="0.00" from="4i" to="3o" end="3600.00" number="300"/>
+    <flow id="south_north" departLane="allowed" departSpeed="speedLimit" begin="0.00" from="3i" to="4o" end="3600.00" number="300"/>
+    <flow id="west_east" departLane="allowed" departSpeed="speedLimit" begin="0.00" from="1i" to="2o" end="3600.00" number="600"/>
 </routes>

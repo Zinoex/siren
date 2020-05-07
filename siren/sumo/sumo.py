@@ -153,30 +153,27 @@ class SUMOSimulation:
 
         # Get all vehicles in model
         vehicles = np.unique(traci.vehicle.getIDList())
-        for k in range(self.prediction_horizon):
-            # k starts at zero (we want a time for the first index of self.time_step_len)
-            time_window_len = (k + 1) * self.time_step_len
-            # Loop through the vehicles (this array has elements deleted later in this function to not double count)
-            for vehicle in vehicles:
-                next_tls = traci.vehicle.getNextTLS(vehicle)
-                if next_tls:
-                    # Returns a tuple, but we only care about the first in the list
-                    next_tls = next_tls[0]
-                    # Lane ID in the traffic light signal
-                    tls_lane_idx = next_tls[1]
-                    signal_lane_id = traci.trafficlight.getControlledLanes(self.configuration.tls_id)[tls_lane_idx]
-                    # Distance remaining to the traffic light
-                    remaining_distance = next_tls[2]
-                    # Current Vehicle Speed
-                    speed = traci.vehicle.getSpeed(vehicle)
-                    # Calculate the time until the car arrives at the light
-                    if speed > 0.0:
-                        time_until_tls = remaining_distance / speed
-                    else:
-                        # The vehicle isn't moving, we can't predict it's arrival
-                        time_until_tls = np.inf
-                    if time_until_tls < time_window_len:
-                        # Delete the vehicle so it's not counted again
-                        vehicles = np.delete(vehicles, np.where(vehicles == vehicle))
+
+        # Loop through the vehicles (this array has elements deleted later in this function to not double count)
+        for vehicle in vehicles:
+            next_tls = traci.vehicle.getNextTLS(vehicle)
+            if next_tls:
+                # Returns a tuple, but we only care about the first in the list
+                next_tls = next_tls[0]
+                # Lane ID in the traffic light signal
+                tls_lane_idx = next_tls[1]
+                signal_lane_id = traci.trafficlight.getControlledLanes(self.configuration.tls_id)[tls_lane_idx]
+                # Distance remaining to the traffic light
+                remaining_distance = next_tls[2]
+                # Current Vehicle Speed
+                speed = traci.vehicle.getSpeed(vehicle)
+                # Calculate the time until the car arrives at the light
+                if speed > 0.0:
+                    time_until_tls = remaining_distance / speed
+
+                    k = int(time_until_tls // self.time_step_len) - 1
+
+                    if 0 <= k < self.prediction_horizon:
                         arr_mat[k, self.lane_map[signal_lane_id]] += 1
+
         return arr_mat

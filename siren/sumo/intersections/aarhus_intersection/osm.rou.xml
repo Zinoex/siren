@@ -50,16 +50,16 @@
     <route edges="-502199947#0 35279828 gneE15" color="yellow" id="b_left"/>
     <route edges="-502199947#0 35279828 gneE6" color="yellow" id="b_right"/>
     <route edges="24095610 gneE4 502199947#0" color="yellow" id="bike_straight"/>
-    <flow id="a1_left_v" begin="0.00" route="a1_left" end="864000.00" vehsPerHour="120.00"/>
-    <flow id="a1_straight_v" begin="0.00" route="a1_straight" end="864000.00" vehsPerHour="900.00"/>
-    <flow id="a2_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="10.00"/>
-    <flow id="a2_right_v" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="180.00"/>
-    <flow id="a2_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="5.00"/>
-    <flow id="a2_straight_v" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="900.00"/>
-    <flow id="b_left_v" begin="0.00" route="b_left" end="86400.00" vehsPerHour="180.00"/>
-    <flow id="b_right_b" type="DEFAULT_BIKETYPE" begin="0.00" route="b_right" end="864000.00" vehsPerHour="15.00"/>
-    <flow id="b_right_v" begin="0.00" route="b_right" end="864000.00" vehsPerHour="60.00"/>
-    <flow id="bike_straight_b" type="DEFAULT_BIKETYPE" begin="0.00" route="bike_straight" end="864000.00" vehsPerHour="15.00"/>
+    <flow id="a1_left_v" departLane="allowed" departSpeed="speedLimit" begin="0.00" route="a1_left" end="864000.00" vehsPerHour="120.00"/>
+    <flow id="a1_straight_v" departLane="allowed" departSpeed="speedLimit" begin="0.00" route="a1_straight" end="864000.00" vehsPerHour="900.00"/>
+    <flow id="a2_right_b" departLane="allowed" departSpeed="speedLimit" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="10.00"/>
+    <flow id="a2_right_v" departLane="allowed" departSpeed="speedLimit" begin="0.00" route="a2_right" end="864000.00" vehsPerHour="180.00"/>
+    <flow id="a2_straight_b" departLane="allowed" departSpeed="speedLimit" type="DEFAULT_BIKETYPE" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="5.00"/>
+    <flow id="a2_straight_v" departLane="allowed" departSpeed="speedLimit" begin="0.00" route="a2_straight" end="864000.00" vehsPerHour="900.00"/>
+    <flow id="b_left_v" departLane="allowed" departSpeed="speedLimit" begin="0.00" route="b_left" end="86400.00" vehsPerHour="180.00"/>
+    <flow id="b_right_b" departLane="allowed" departSpeed="speedLimit" type="DEFAULT_BIKETYPE" begin="0.00" route="b_right" end="864000.00" vehsPerHour="15.00"/>
+    <flow id="b_right_v" departLane="allowed" departSpeed="speedLimit" begin="0.00" route="b_right" end="864000.00" vehsPerHour="60.00"/>
+    <flow id="bike_straight_b" departLane="allowed" departSpeed="speedLimit" type="DEFAULT_BIKETYPE" begin="0.00" route="bike_straight" end="864000.00" vehsPerHour="15.00"/>
     <personFlow id="personFlow_1" begin="0.00" end="86400.00" personsPerHour="15.00">
         <personTrip from="gneE13" to="gneE6"/>
     </personFlow>

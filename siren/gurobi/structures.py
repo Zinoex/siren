@@ -11,14 +11,15 @@ class GurobiConfiguration:
 
 class GurobiOptions:
     def __init__(self, prediction_horizon=30, control_horizon=20,
-                 queue_weight=1, stops_weight=3,
-                 wait_weight=0.01, green_weight=0.01, **_):
+                 queue_weight=1, stops_weight=6,
+                 wait_weight=0.05, green_weight=0.01, throughput_weight=2, **_):
         self.prediction_horizon = prediction_horizon
         self.control_horizon = control_horizon
         self.queue_weight = queue_weight
         self.stops_weight = stops_weight
         self.wait_weight = wait_weight
         self.green_weight = green_weight
+        self.throughput_weight = throughput_weight
 
 
 class ConstantDeparture:

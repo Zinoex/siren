@@ -41,6 +41,6 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <flow id="flow_0" begin="0.00" from="gneE9" to="gneE10" end="3600.00" vehsPerHour="800.00" type="DEFAULT_VEHTYPE"/>
-    <flow id="flow_1" begin="0.00" departSpeed="speedLimit" from="gneE7" to="gneE8" end="3600.00" vehsPerHour="600.00" type="DEFAULT_VEHTYPE"/>
+    <flow id="flow_0" departLane="allowed" departSpeed="speedLimit" begin="0.00" from="gneE9" to="gneE10" end="3600.00" vehsPerHour="800.00" type="DEFAULT_VEHTYPE"/>
+    <flow id="flow_1" departLane="allowed" departSpeed="speedLimit" begin="0.00" from="gneE7" to="gneE8" end="3600.00" vehsPerHour="600.00" type="DEFAULT_VEHTYPE"/>
 </routes>

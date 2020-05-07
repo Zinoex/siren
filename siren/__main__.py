@@ -144,9 +144,10 @@ def parse_arguments():
     parser.add_argument('-p', '--prediction-horizon', type=positive_type, default=30, help='Set prediction horizon.')
     parser.add_argument('-c', '--control-horizon', type=positive_type, default=20, help='Set control horizon')
     parser.add_argument('--queue-weight', type=float, default=1, help='Set queue weight.')
-    parser.add_argument('--stops-weight', type=float, default=2, help='Set stops weight.')
-    parser.add_argument('--wait-weight', type=float, default=0.01, help='Set wait weight (should be small).')
+    parser.add_argument('--stops-weight', type=float, default=6, help='Set stops weight.')
+    parser.add_argument('--wait-weight', type=float, default=0.05, help='Set wait weight (should be small).')
     parser.add_argument('--green-weight', type=float, default=0.01, help='Set green weight (should be small).')
+    parser.add_argument('--throughput-weight', type=float, default=2, help='Set throughput weight.')
 
     parser.add_argument('-v', '--verbose', action='store_true', help='Print variables after execution.')
     parser.add_argument('-i', '--iterations', type=positive_type, default=1, help='Number of iterations to test over.')
