@@ -35,5 +35,12 @@
     ],
     "maximum_wait": [300, 300, 300, 300, 300, 300, 300, 300],
     "departure_rate": [2, 1, 2, 1, 1, 1, 2, 1],
-    "SUMO_lane_mapping": [0,0,1,6,6,6,6,6,6,4,4,3,2,2,7,5,5]
+    "SUMO_lane_mapping": [0, 0, 1, 6, 6, 6, 6, 6, 6, 4, 4, 3, 2, 2, 7, 5, 5],
+    "crossings": [
+        {
+            "crossing": ":gneJ29_c0",
+            "walking_areas": [":gneJ29_w0", ":gneJ29_w1"],
+            "lane": 15
+        }
+    ]
 }

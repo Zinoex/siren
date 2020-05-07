@@ -1,18 +1,13 @@
 import argparse
-import json
-import timeit
-import time
 import re
-import os
-from multiprocessing import Process, SimpleQueue
+import timeit
 
 import numpy as np
 
 from gurobi.model import GurobiIntersection
-from gurobi.structures import GurobiOptions, PerLaneDeparture, ConstantDeparture, ConstantArrival
+from gurobi.structures import GurobiOptions, ConstantDeparture, ConstantArrival
 from sumo.configuration_loader import ConfigurationLoader
-
-from sumo.sumo import SUMOSimulation
+from sumo.runners import TimedRunner, MPCRunner
 
 
 def test(args):
@@ -47,75 +42,8 @@ def iis(args):
 
 
 def sumo(args):
-    os.makedirs('data/{}/'.format(args.folder_prefix), exist_ok=True)
-
-    configuration_loader = ConfigurationLoader(args.name)
-    sim = SUMOSimulation(configuration_loader.sumo_config, args)
-
-    if not args.timed:
-        options = GurobiOptions(**vars(args))
-        model = GurobiIntersection(configuration_loader.gurobi_config, options)
-
-        with open('data/{}/options.json'.format(args.folder_prefix), 'w') as options_file:
-            options_file.write(json.dumps(options.__dict__))
-            options_file.flush()
-
-        departure = PerLaneDeparture(configuration_loader.departure_rate)
-
-    print('Sumo Object created')
-    sim.start()
-
-    sim_continue_flag = sim.step()
-
-    input_queue = SimpleQueue()
-    output_queue = SimpleQueue()
-
-    def optimize():
-        with open('data/{}/timing.csv'.format(args.folder_prefix), 'w') as file:
-            i = 0
-            while sim_continue_flag:
-                q, a = input_queue.get()
-
-                t1 = time.time()
-                lm = model.optimize(q, a, departure, verbose=args.verbose)
-                t2 = time.time()
-                file.write('{},{}\n'.format(i, t2 - t1))
-                file.flush()
-
-                output_queue.put(lm)
-                i += 1
-
-    if not args.timed:
-        worker_process = Process(target=optimize)
-        worker_process.start()
-
-    try:
-        while sim_continue_flag:
-            queue = sim.get_queue()
-            print('Queue: {}'.format(queue))
-
-            arr = sim.arrival_prediction()
-            if not args.timed:
-                input_queue.put((queue, arr))
-
-            for i in range(20):
-                t1 = time.time()
-                sim_continue_flag = sim.step()
-                t2 = time.time()
-
-                if not sim_continue_flag:
-                    return False
-
-                if not args.no_delay and t2 - t1 < 0.05:
-                    time.sleep(0.05 - (t2 - t1))
-
-            if not args.timed:
-                light_matrix = output_queue.get()
-
-                sim.set_lights(light_matrix)
-    finally:
-        if not args.timed:
-            worker_process.kill()
+    runner = TimedRunner(args) if args.timed else MPCRunner(args)
+    runner.run()
 
 
 def parse_arguments():

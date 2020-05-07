@@ -33,5 +33,6 @@ class ConfigurationLoader:
             config_file=self.config_file,
             tls_id=desc_data['traffic_junction_id'],
             num_signals=self.num_signals,
-            lane_mapping_vec = desc_data['SUMO_lane_mapping']
+            lane_mapping=desc_data['SUMO_lane_mapping'],
+            crossings=desc_data.get('crossings', [])
         )
