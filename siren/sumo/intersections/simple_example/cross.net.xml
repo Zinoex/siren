@@ -79,7 +79,7 @@
     </edge>
 
     <tlLogic id="0" type="static" programID="0" offset="0">
-        <phase duration="40" state="GrGr"/>
+        <phase duration="20" state="GrGr"/>
         <phase duration="4"  state="yryr"/>
         <phase duration="2"  state="rrrr"/>
         <phase duration="40" state="rGrG"/>
