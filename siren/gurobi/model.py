@@ -38,23 +38,21 @@ class GurobiIntersection:
 
         # Create variables
         self.colors = self.color_var('')
-        self.notcolors = self.color_var('not_')
+        self.notcolors = self.color_var('not_', vtype=GRB.CONTINUOUS)
 
         self.green_timer = self.lane_step_var('green_timer')
         self.amber_timer = self.lane_step_var('amber_timer', inclusive=True)
         self.yellow_timer = self.lane_step_var('yellow_timer', inclusive=True)
         self.notgreen_timer = self.lane_step_var('notgreen_timer')
 
-        self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
+        self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, skip_first=True, vtype=GRB.CONTINUOUS)
         self.queue = self.lane_step_var('queue', inclusive=True)
-        self.potential_queue = self.lane_step_var('potential_queue', inclusive=True, skip_first=True)
-        self.potential_flow = self.lane_step_var('potential_flow', inclusive=True, skip_first=True)
-        self.actual_flow = self.lane_step_var('actual_flow', inclusive=True, skip_first=True)
+        self.flow = self.lane_step_var('actual_flow', inclusive=True, skip_first=True)
         self.arrival = self.lane_step_var('arrival', inclusive=True, skip_first=True)
         self.departure = self.lane_step_var('departure', inclusive=True, skip_first=True)
         self.stops = self.lane_step_var('stops', inclusive=True, skip_first=True)
         self.wait_time = self.lane_step_var('wait_time', inclusive=True)
-        self.request = self.lane_step_var('request', inclusive=True, skip_first=True, vtype=GRB.BINARY)
+        self.request = self.lane_step_var('request', inclusive=True, skip_first=True, vtype=GRB.CONTINUOUS)
 
         # Add system dynamics
         self.queue_dynamics()
@@ -184,13 +182,13 @@ class GurobiIntersection:
 
         return var
 
-    def color_var(self, prefix):
+    def color_var(self, prefix, vtype=GRB.BINARY):
         colors = np.empty((self.options.prediction_horizon + 1, self.configuration.num_signals, self.num_colors),
                           dtype=object)
         for k in range(self.options.prediction_horizon + 1):
             for s in range(self.configuration.num_signals):
                 for c in range(self.num_colors):
-                    colors[k, s, c] = self.model.addVar(vtype=GRB.BINARY,
+                    colors[k, s, c] = self.model.addVar(vtype=vtype,
                                                         name='{}{}_{}_{}'.format(prefix, self.color_name[c], k, s))
 
         return colors
@@ -202,19 +200,13 @@ class GurobiIntersection:
         queue_upper_bound = 100
         for s in range(self.configuration.num_signals):
             for k in range(1, self.options.prediction_horizon + 1):
-                # Potential queue and flow
-                self.model.addConstr(self.potential_queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s])
-                self.model.addGenConstrMin(self.potential_flow[k, s], [self.potential_queue[k, s], self.departure[k, s]])
-
-                # Actual flow
-                self.model.addConstr(self.actual_flow[k, s] <= queue_upper_bound * self.colors[k, s, self.GREEN])
-                self.model.addConstr(self.actual_flow[k, s] >= 0)
-                self.model.addConstr(self.actual_flow[k, s] <= self.potential_flow[k, s])
-                self.model.addConstr(
-                    self.actual_flow[k, s] >= self.potential_flow[k, s] - queue_upper_bound * self.notcolors[k, s, self.GREEN])
+                # Flow
+                self.model.addConstr(self.flow[k, s] <= self.queue[k - 1, s] + self.arrival[k, s])
+                self.model.addConstr(self.flow[k, s] <= queue_upper_bound * self.colors[k, s, self.GREEN])
+                self.model.addConstr(self.flow[k, s] <= self.departure[k, s])
 
                 # Queue
-                self.model.addConstr(self.queue[k, s] == self.potential_queue[k, s] - self.actual_flow[k, s])
+                self.model.addConstr(self.queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.flow[k, s])
                 self.model.addConstr(self.queue[k, s] >= self.queue_notempty[k, s])
                 self.model.addConstr(self.queue[k, s] <= queue_upper_bound * self.queue_notempty[k, s])
 
@@ -247,7 +239,7 @@ class GurobiIntersection:
         return self.notcolors[1:, :, self.GREEN].sum()
 
     def throughput_objective(self):
-        return -self.actual_flow[1:, :].sum()
+        return -self.flow[1:, :].sum()
 
     #########################
     # General constraints
@@ -325,8 +317,6 @@ class GurobiIntersection:
 
         self.model.addConstr(counter <= prev_counter + 1)
         self.model.addConstr(counter >= (prev_counter + 1) - upper_bound * reset)
-
-        return counter
 
     def timer_dynamics(self, timer, upper_bound, c, reverse=False, inclusive=False):
         count = self.colors if not reverse else self.notcolors
