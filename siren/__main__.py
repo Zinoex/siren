@@ -30,7 +30,7 @@ def test(args):
                 if queue[s] < 0:
                     queue[s] = 0
 
-    print('Execution took {}s'.format(timeit.timeit(optimize_wrapper, number=1)))
+    print('Execution took {:.3f}s'.format(timeit.timeit(optimize_wrapper, number=1)))
 
 
 def iis(args):
