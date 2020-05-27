@@ -66,10 +66,6 @@ class GurobiIntersection:
         # Create variables
         self.colors = self.color_var()
 
-        self.turned_green = self.lane_step_var('turned_green', inclusive=True, ub=1)
-        self.turned_amber = self.lane_step_var('turned_amber', inclusive=True, ub=1)
-        self.turned_yellow = self.lane_step_var('turned_yellow', inclusive=True, ub=1)
-
         self.queue_notempty = self.lane_step_var('queue_notempty', inclusive=True, skip_first=True, vtype=GRB.BINARY)
         self.queue = self.lane_step_var('queue', inclusive=True)
         self.potential_flow = self.lane_step_var('potential_flow', inclusive=True, skip_first=True)
@@ -85,9 +81,6 @@ class GurobiIntersection:
         self.queue_dynamics()
 
         # Timer dynamics
-        self.turned_green_dynamics()
-        self.turned_amber_dynamics()
-        self.turned_yellow_dynamics()
         self.wait_time_timer_dynamics()
 
         # Add constraints
@@ -194,7 +187,7 @@ class GurobiIntersection:
 
     def initial_color_constraints(self, color, initial, timing):
         return self.model.addConstrs(
-            (self.colors.sum([i for i in range(1, int(timing[s] - initial[s] + 1))], s, color) == timing[s] - initial[s]
+            (self.colors.sum(range(1, int(timing[s] - initial[s] + 1)), s, color) == timing[s] - initial[s]
                 for s in range(self.configuration.num_signals) if 0 < initial[s] < timing[s]),
             'initial_{}'.format(color))
 
@@ -301,7 +294,7 @@ class GurobiIntersection:
     # Objectives
     #####################
     def queue_objective(self):
-        return self.queue.sum([i for i in range(1, self.options.prediction_horizon + 1)], '*')
+        return self.queue.sum(range(1, self.options.prediction_horizon + 1), '*')
 
     def stops_objective(self):
         stops_upper_bound = 10000
@@ -322,16 +315,16 @@ class GurobiIntersection:
             (self.stops[k, s] >= self.arrival[k, s] - stops_upper_bound * self.colors[k, s, 'green'] for s, k in
              compound_range), 'stops3')
 
-        return self.stops.sum([i for i in range(1, self.options.prediction_horizon + 1)], '*')
+        return self.stops.sum(range(1, self.options.prediction_horizon + 1), '*')
 
     def wait_time_objective(self):
-        return self.wait_time.sum([i for i in range(1, self.options.prediction_horizon + 1)], '*')
+        return self.wait_time.sum(range(1, self.options.prediction_horizon + 1), '*')
 
     def green_objective(self):
-        return -self.colors.sum([i for i in range(1, self.options.prediction_horizon + 1)], '*', 'green')
+        return -self.colors.sum(range(1, self.options.prediction_horizon + 1), '*', 'green')
 
     def throughput_objective(self):
-        return -self.actual_flow.sum([i for i in range(1, self.options.prediction_horizon + 1)], '*')
+        return -self.actual_flow.sum(range(1, self.options.prediction_horizon + 1), '*')
 
     #########################
     # General constraints
@@ -413,32 +406,6 @@ class GurobiIntersection:
     #########################################
     # Timer dynamics
     #########################################
-    def turned_dynamics(self, turned, color):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(self.options.prediction_horizon))
-        self.model.addConstrs((turned[k + 1, s] - self.colors[k + 1, s, color] <= 0 for s, k in compound_range),
-                              'turned_{}1'.format(color))
-
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(self.options.prediction_horizon))
-        self.model.addConstrs((turned[k + 1, s] - (1 - self.colors[k, s, color]) <= 0 for s, k in compound_range),
-                              'turned_{}2'.format(color))
-
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(self.options.prediction_horizon))
-        self.model.addConstrs(
-            (-turned[k + 1, s] + (1 - self.colors[k, s, color]) + self.colors[k + 1, s, color] <= 1 for s, k in
-             compound_range), 'turned_{}3'.format(color))
-
-    def turned_green_dynamics(self):
-        self.turned_dynamics(self.turned_green, 'green')
-
-    def turned_amber_dynamics(self):
-        self.turned_dynamics(self.turned_amber, 'amber')
-
-    def turned_yellow_dynamics(self):
-        self.turned_dynamics(self.turned_yellow, 'yellow')
-
     def increment_counter(self, timer, k, s, count, reset, upper_bound):
         counter = timer[k, s]
         prev_counter = timer[k - 1, s]
@@ -467,19 +434,21 @@ class GurobiIntersection:
         for s in range(self.configuration.num_signals):
             min_green = self.configuration.min_green[s]
             if min_green > 0:
-                for k in range(self.options.prediction_horizon + 1 - min_green):
+                for k in range(1, self.options.prediction_horizon + 1 - min_green):
+                    green_diff = self.colors[k, s, 'green'] - self.colors[k - 1, s, 'green']
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, k + min_green)], s, 'green') >= min_green *
-                        self.turned_green[k, s], 'min_green_{}[{}]'.format(s, k))
+                        self.colors.sum(range(k, k + min_green), s, 'green') >= min_green *
+                        green_diff, 'min_green_{}[{}]'.format(s, k))
 
         # End range case
         for s in range(self.configuration.num_signals):
             min_green = self.configuration.min_green[s]
             if min_green > 0:
                 for k in range(self.options.prediction_horizon + 1 - min_green, self.options.prediction_horizon):
+                    green_diff = self.colors[k, s, 'green'] - self.colors[k - 1, s, 'green']
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, self.options.prediction_horizon + 1)], s, 'green') == (
-                                self.options.prediction_horizon + 1 - k) * self.turned_green[k, s],
+                        self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'green') >= (
+                                self.options.prediction_horizon + 1 - k) * green_diff,
                         'min_green_e_{}[{}]'.format(s, k))
 
     def amber_time_constraints(self):
@@ -487,12 +456,13 @@ class GurobiIntersection:
         for s in range(self.configuration.num_signals):
             amber_time = self.configuration.amber_time[s]
             if amber_time > 0:
-                for k in range(self.options.prediction_horizon + 1 - amber_time):
+                for k in range(1, self.options.prediction_horizon + 1 - amber_time):
+                    amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, k + amber_time)], s, 'amber') >= amber_time *
-                        self.turned_amber[k, s], 'amber1_{}[{}]'.format(s, k))
+                        self.colors.sum(range(k, k + amber_time), s, 'amber') >= amber_time *
+                        amber_diff, 'amber1_{}[{}]'.format(s, k))
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, k + amber_time + 1)], s, 'amber') <= amber_time,
+                        self.colors.sum(range(k, k + amber_time + 1), s, 'amber') <= amber_time,
                         name='amber2_{}[{}]'.format(s, k))
 
         # End range case
@@ -500,9 +470,10 @@ class GurobiIntersection:
             amber_time = self.configuration.amber_time[s]
             if amber_time > 0:
                 for k in range(self.options.prediction_horizon + 1 - amber_time, self.options.prediction_horizon):
+                    amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, self.options.prediction_horizon + 1)], s, 'amber') == (
-                                self.options.prediction_horizon + 1 - k) * self.turned_amber[k, s],
+                        self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'amber') >= (
+                                self.options.prediction_horizon + 1 - k) * amber_diff,
                         'amber_e_{}[{}]'.format(s, k))
 
     def yellow_time_constraints(self):
@@ -510,12 +481,13 @@ class GurobiIntersection:
         for s in range(self.configuration.num_signals):
             yellow_time = self.configuration.yellow_time[s]
             if yellow_time > 0:
-                for k in range(self.options.prediction_horizon + 1 - yellow_time):
+                for k in range(1, self.options.prediction_horizon + 1 - yellow_time):
+                    yellow_diff = self.colors[k, s, 'yellow'] - self.colors[k - 1, s, 'yellow']
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, k + yellow_time)], s, 'yellow') >= yellow_time *
-                        self.turned_yellow[k, s], 'yellow1_{}[{}]'.format(s, k))
+                        self.colors.sum(range(k, k + yellow_time), s, 'yellow') >= yellow_time *
+                        yellow_diff, 'yellow1_{}[{}]'.format(s, k))
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, k + yellow_time + 1)], s, 'yellow') <= yellow_time,
+                        self.colors.sum(range(k, k + yellow_time + 1), s, 'yellow') <= yellow_time,
                         name='yellow2_{}[{}]'.format(s, k))
 
         # End range case
@@ -523,9 +495,10 @@ class GurobiIntersection:
             yellow_time = self.configuration.yellow_time[s]
             if yellow_time > 0:
                 for k in range(self.options.prediction_horizon + 1 - yellow_time, self.options.prediction_horizon):
+                    yellow_diff = self.colors[k, s, 'yellow'] - self.colors[k - 1, s, 'yellow']
                     self.model.addConstr(
-                        self.colors.sum([i for i in range(k, self.options.prediction_horizon + 1)], s, 'yellow') == (
-                                self.options.prediction_horizon + 1 - k) * self.turned_yellow[k, s],
+                        self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'yellow') >= (
+                                self.options.prediction_horizon + 1 - k) * yellow_diff,
                         'yellow_e_{}[{}]'.format(s, k))
 
     def green_interval(self):
@@ -534,7 +507,10 @@ class GurobiIntersection:
         def constraint(k, s1, s2):
             green_interval = self.configuration.green_interval[s2, s1]
             red_min = max(k - green_interval, 1)
+            green_diff = self.colors[k, s1, 'green'] - self.colors[k - 1, s1, 'green']
 
-            return self.colors.sum([i for i in range(red_min, k)], s2, ['red', 'yellow', 'amber']) - green_interval * self.turned_green[k, s1] >= 0
+            return self.colors.sum(range(red_min, k), s2, ['red', 'yellow', 'amber']) - green_interval * green_diff >= 0
+
+        # TODO: This is a tad slow. Do some speedup.
 
         self.green_interval_constraints = self.model.addConstrs((constraint(k, s1, s2) for k, s1, s2 in compound_range if self.configuration.green_interval[s2, s1] > 0), 'green_interval')
