@@ -235,7 +235,7 @@ class GurobiIntersection:
             green_interval = self.configuration.green_interval[s2, s1]
 
             if green_interval > 0:
-                initial_notgreen = max(min(self.initial_notgreen[s2], green_interval - k + 1), 0)
+                initial_notgreen = max(self.initial_notgreen[s2] - k + 1, 0)
                 self.green_interval_constraints[k, s1, s2].rhs = -initial_notgreen
 
         self.initial_set = True
@@ -509,7 +509,7 @@ class GurobiIntersection:
             red_min = max(k - green_interval, 1)
             green_diff = self.colors[k, s1, 'green'] - self.colors[k - 1, s1, 'green']
 
-            return self.colors.sum(range(red_min, k), s2, ['red', 'yellow', 'amber']) - green_interval * green_diff >= 0
+            return self.colors.sum(range(red_min, k - 1), s2, ['red', 'yellow', 'amber']) - green_interval * green_diff >= 0
 
         # TODO: This is a tad slow. Do some speedup.
 
