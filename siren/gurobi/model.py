@@ -442,8 +442,7 @@ class GurobiIntersection:
             red_min = max(k - green_interval, 1)
             green_diff = self.colors[k, s1, 'green'] - self.colors[k - 1, s1, 'green']
 
-            return self.colors.sum(range(red_min, k), s2, ['red', 'yellow', 'amber']) - green_interval * green_diff >= 0
-
-        # TODO: This is a tad slow. Do some speedup.
+            # TODO: Could probably be made smarter because yellow is excluded
+            return self.colors.sum(range(red_min, k), s2, 'red') - green_interval * green_diff >= 0
 
         self.green_interval_constraints = self.model.addConstrs((constraint(k, s1, s2) for k, s1, s2 in compound_range if self.configuration.green_interval[s2, s1] > 0), 'green_interval')
