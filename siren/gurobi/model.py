@@ -327,59 +327,21 @@ class GurobiIntersection:
             (self.configuration.conflict_matrix[s1, s2] * (self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1
              for k, s1, s2 in compound_range), 'blocking')
 
-    def stable_light_transition_constraint(self, stable, after_not, after_zero, after_positive, timing):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.colors[k - 1, s, stable] + self.colors[k, s, after_not] <= 1 for s, k in compound_range),
-            'stable1_{}'.format(stable))
-
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            ((self.colors[k - 1, s, stable] + self.colors[k, s, after_zero]) * timing[s] <= 1 + timing[s] for s, k in
-             compound_range), 'stable2_{}'.format(stable))
-
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.colors[k - 1, s, stable] + self.colors[k, s, after_positive] * (1 - timing[s]) <= 1 for s, k in
-             compound_range), 'stable3_{}'.format(stable))
-
     def green_transition_constraints(self):
-        # self.stable_light_transition_constraint('green', 'amber', 'red', 'yellow', self.configuration.yellow_time)
         compound_range = itertools.product(range(self.configuration.num_signals),
                                            range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs((self.colors[k - 1, s, 'green'] + self.colors[k, s, 'amber'] <= 1 for s, k in compound_range), 'stable1_{}'.format('green'))
+        self.model.addConstrs((self.colors[k - 1, s, 'green'] + self.colors[k, s, 'amber'] <= 1 for s, k in compound_range), 'stable_green')
 
     def red_transition_constraints(self):
-        # self.stable_light_transition_constraint('red', 'yellow', 'green', 'amber', self.configuration.amber_time)
         compound_range = itertools.product(range(self.configuration.num_signals),
                                            range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'green']) * self.configuration.amber_time[s] <= 1 + self.configuration.amber_time[s] for s, k in compound_range), 'stable2_{}'.format('red'))
+        self.model.addConstrs(((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'green']) * self.configuration.amber_time[s] <= 1 + self.configuration.amber_time[s] for s, k in compound_range), 'stable2_red')
 
         compound_range = itertools.product(range(self.configuration.num_signals),
                                            range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'amber'] * (1 - self.configuration.amber_time[s]) <= 1 for s, k in compound_range), 'stable3_{}'.format('red'))
-
-    def intermediate_transition_constraints(self, intermediate, after1, after2):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.colors[k - 1, s, intermediate] + self.colors[k, s, after1] <= 1 for s, k in compound_range),
-            'intermediate1_{}'.format(intermediate))
-
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.colors[k - 1, s, intermediate] + self.colors[k, s, after2] <= 1 for s, k in compound_range),
-            'intermediate2_{}'.format(intermediate))
-
-    def yellow_transition_constraints(self):
-        self.intermediate_transition_constraints('yellow', 'green', 'amber')
+        self.model.addConstrs((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'amber'] * (1 - self.configuration.amber_time[s]) <= 1 for s, k in compound_range), 'stable3_red')
 
     def amber_transition_constraints(self):
-        # self.intermediate_transition_constraints('amber', 'yellow', 'red')
         compound_range = itertools.product(range(self.configuration.num_signals),
                                            range(1, self.options.prediction_horizon + 1))
         self.model.addConstrs(
@@ -471,31 +433,6 @@ class GurobiIntersection:
                         self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'amber') >= (
                                 self.options.prediction_horizon + 1 - k) * amber_diff,
                         'amber_e_{}[{}]'.format(s, k))
-
-    def yellow_time_constraints(self):
-        # General case
-        for s in range(self.configuration.num_signals):
-            yellow_time = self.configuration.yellow_time[s]
-            if yellow_time > 0:
-                for k in range(1, self.options.prediction_horizon + 1 - yellow_time):
-                    yellow_diff = self.colors[k, s, 'yellow'] - self.colors[k - 1, s, 'yellow']
-                    self.model.addConstr(
-                        self.colors.sum(range(k, k + yellow_time), s, 'yellow') >= yellow_time *
-                        yellow_diff, 'yellow1_{}[{}]'.format(s, k))
-                    self.model.addConstr(
-                        self.colors.sum(range(k, k + yellow_time + 1), s, 'yellow') <= yellow_time,
-                        name='yellow2_{}[{}]'.format(s, k))
-
-        # End range case
-        for s in range(self.configuration.num_signals):
-            yellow_time = self.configuration.yellow_time[s]
-            if yellow_time > 0:
-                for k in range(self.options.prediction_horizon + 1 - yellow_time, self.options.prediction_horizon):
-                    yellow_diff = self.colors[k, s, 'yellow'] - self.colors[k - 1, s, 'yellow']
-                    self.model.addConstr(
-                        self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'yellow') >= (
-                                self.options.prediction_horizon + 1 - k) * yellow_diff,
-                        'yellow_e_{}[{}]'.format(s, k))
 
     def green_interval(self):
         compound_range = itertools.product(range(1, self.options.prediction_horizon + 1), range(self.configuration.num_signals), range(self.configuration.num_signals))
