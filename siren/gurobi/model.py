@@ -8,24 +8,21 @@ import numpy as np
 
 
 class GurobiIntersection:
-    num_colors = 4
+    num_colors = 3
 
     GREEN = 0
     RED = 1
-    YELLOW = 2
-    AMBER = 3
+    AMBER = 2
 
     color_to_idx = {
         'green': GREEN,
         'red': RED,
-        'yellow': YELLOW,
         'amber': AMBER
     }
 
     allcolors = [
         'green',
         'red',
-        'yellow',
         'amber'
     ]
 
@@ -38,7 +35,6 @@ class GurobiIntersection:
 
         # Progress state
         self.initial_green = np.zeros(self.configuration.num_signals)
-        self.initial_yellow = np.zeros(self.configuration.num_signals)
         self.initial_amber = np.zeros(self.configuration.num_signals)
         self.initial_notgreen = np.zeros(self.configuration.num_signals)
         self.initial_wait = np.zeros(self.configuration.num_signals)
@@ -57,7 +53,6 @@ class GurobiIntersection:
         self.initial_light_constraints = None
         self.initial_notgreen_constraints = None
         self.initial_green_constraints = None
-        self.initial_yellow_constraints = None
         self.initial_amber_constraints = None
 
         # RHS = Departure
@@ -88,7 +83,6 @@ class GurobiIntersection:
         self.conflict_constraints()
         self.green_transition_constraints()
         self.red_transition_constraints()
-        self.yellow_transition_constraints()
         self.amber_transition_constraints()
         self.control_horizon_constraints()
         self.maximum_wait()
@@ -96,7 +90,6 @@ class GurobiIntersection:
         # Add timing constraints
         self.min_green_constraints()
         self.amber_time_constraints()
-        self.yellow_time_constraints()
         self.green_interval()
 
         # Set object function
@@ -150,11 +143,6 @@ class GurobiIntersection:
             else:
                 self.initial_amber[s] = 0
         for s in range(self.configuration.num_signals):
-            if self.initial_lights[s, self.YELLOW] > 0.9:
-                self.initial_yellow[s] += 1
-            else:
-                self.initial_yellow[s] = 0
-        for s in range(self.configuration.num_signals):
             if self.initial_lights[s, self.GREEN] < 0.1:
                 self.initial_notgreen[s] += 1
             else:
@@ -199,7 +187,6 @@ class GurobiIntersection:
             self.model.remove(self.initial_queue_constraints)
             self.model.remove(self.initial_light_constraints)
             self.model.remove(self.initial_green_constraints)
-            self.model.remove(self.initial_yellow_constraints)
             self.model.remove(self.initial_amber_constraints)
 
         compound_range = itertools.product(range(self.configuration.num_signals),
@@ -211,9 +198,6 @@ class GurobiIntersection:
                                            range(1, self.options.prediction_horizon + 1))
         self.departure_constraints = self.model.addConstrs(
             (self.departure[k, s] == int(departure[k - 1, s]) for s, k in compound_range), 'departure')
-
-        # for s, k in compound_range:
-        #     self.flow_departure_constraints[k, s].rhs = int(departure[k - 1, s])
 
         self.initial_wait_constraints = self.model.addConstrs(
             (self.wait_time[0, s] == self.initial_wait[s] for s in range(self.configuration.num_signals)),
@@ -227,7 +211,6 @@ class GurobiIntersection:
              compound_range), 'initial_lights')
 
         self.initial_green_constraints = self.initial_color_constraints('green', self.initial_green, self.configuration.min_green)
-        self.initial_yellow_constraints = self.initial_color_constraints('yellow', self.initial_yellow, self.configuration.yellow_time)
         self.initial_amber_constraints = self.initial_color_constraints('amber', self.initial_amber, self.configuration.amber_time)
 
         compound_range = itertools.product(range(1, self.options.prediction_horizon + 1), range(self.configuration.num_signals), range(self.configuration.num_signals))
@@ -364,12 +347,20 @@ class GurobiIntersection:
              compound_range), 'stable3_{}'.format(stable))
 
     def green_transition_constraints(self):
-        self.stable_light_transition_constraint('green', 'amber', 'red', 'yellow',
-                                                self.configuration.yellow_time)
+        # self.stable_light_transition_constraint('green', 'amber', 'red', 'yellow', self.configuration.yellow_time)
+        compound_range = itertools.product(range(self.configuration.num_signals),
+                                           range(1, self.options.prediction_horizon + 1))
+        self.model.addConstrs((self.colors[k - 1, s, 'green'] + self.colors[k, s, 'amber'] <= 1 for s, k in compound_range), 'stable1_{}'.format('green'))
 
     def red_transition_constraints(self):
-        self.stable_light_transition_constraint('red', 'yellow', 'green', 'amber',
-                                                self.configuration.amber_time)
+        # self.stable_light_transition_constraint('red', 'yellow', 'green', 'amber', self.configuration.amber_time)
+        compound_range = itertools.product(range(self.configuration.num_signals),
+                                           range(1, self.options.prediction_horizon + 1))
+        self.model.addConstrs(((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'green']) * self.configuration.amber_time[s] <= 1 + self.configuration.amber_time[s] for s, k in compound_range), 'stable2_{}'.format('red'))
+
+        compound_range = itertools.product(range(self.configuration.num_signals),
+                                           range(1, self.options.prediction_horizon + 1))
+        self.model.addConstrs((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'amber'] * (1 - self.configuration.amber_time[s]) <= 1 for s, k in compound_range), 'stable3_{}'.format('red'))
 
     def intermediate_transition_constraints(self, intermediate, after1, after2):
         compound_range = itertools.product(range(self.configuration.num_signals),
@@ -388,7 +379,12 @@ class GurobiIntersection:
         self.intermediate_transition_constraints('yellow', 'green', 'amber')
 
     def amber_transition_constraints(self):
-        self.intermediate_transition_constraints('amber', 'yellow', 'red')
+        # self.intermediate_transition_constraints('amber', 'yellow', 'red')
+        compound_range = itertools.product(range(self.configuration.num_signals),
+                                           range(1, self.options.prediction_horizon + 1))
+        self.model.addConstrs(
+            (self.colors[k - 1, s, 'amber'] + self.colors[k, s, 'red'] <= 1 for s, k in compound_range),
+            'intermediate1_{}'.format('amber'))
 
     def control_horizon_constraints(self):
         compound_range = itertools.product(range(self.options.control_horizon + 1, self.options.prediction_horizon),
@@ -509,7 +505,7 @@ class GurobiIntersection:
             red_min = max(k - green_interval, 1)
             green_diff = self.colors[k, s1, 'green'] - self.colors[k - 1, s1, 'green']
 
-            return self.colors.sum(range(red_min, k - 1), s2, ['red', 'yellow', 'amber']) - green_interval * green_diff >= 0
+            return self.colors.sum(range(red_min, k), s2, ['red', 'yellow', 'amber']) - green_interval * green_diff >= 0
 
         # TODO: This is a tad slow. Do some speedup.
 
