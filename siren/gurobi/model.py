@@ -1,4 +1,4 @@
-import itertools
+from itertools import product, tee
 from time import time
 
 import gurobipy as gp
@@ -32,11 +32,13 @@ class GurobiIntersection:
         self.model.Params.MIPGap = 0.03
         self.configuration = configuration
         self.options = options
+        self.num_signals = list(range(self.configuration.num_signals))
+        self.prediction_horizon = list(range(1, self.options.prediction_horizon + 1))
 
         # Progress state
         self.initial_green = np.zeros(self.configuration.num_signals)
         self.initial_amber = np.zeros(self.configuration.num_signals)
-        self.initial_notgreen = np.zeros(self.configuration.num_signals)
+        self.initial_red = np.zeros(self.configuration.num_signals)
         self.initial_wait = np.zeros(self.configuration.num_signals)
 
         self.initial_lights = np.zeros((self.configuration.num_signals, self.num_colors))
@@ -51,12 +53,9 @@ class GurobiIntersection:
         self.initial_wait_constraints = None
         self.initial_queue_constraints = None
         self.initial_light_constraints = None
-        self.initial_notgreen_constraints = None
+        self.initial_red_constraints = None
         self.initial_green_constraints = None
         self.initial_amber_constraints = None
-
-        # RHS = Departure
-        self.flow_departure_constraints = None
 
         # Create variables
         self.colors = self.color_var()
@@ -132,21 +131,21 @@ class GurobiIntersection:
 
         self.initial_lights = self.get_colors()
 
-        for s in range(self.configuration.num_signals):
+        for s in self.num_signals:
             if self.initial_lights[s, self.GREEN] > 0.9:
                 self.initial_green[s] += 1
             else:
                 self.initial_green[s] = 0
-        for s in range(self.configuration.num_signals):
+
             if self.initial_lights[s, self.AMBER] > 0.9:
                 self.initial_amber[s] += 1
             else:
                 self.initial_amber[s] = 0
-        for s in range(self.configuration.num_signals):
-            if self.initial_lights[s, self.GREEN] < 0.1:
-                self.initial_notgreen[s] += 1
+
+            if self.initial_lights[s, self.RED] > 0.9:
+                self.initial_red[s] += 1
             else:
-                self.initial_notgreen[s] = 0
+                self.initial_red[s] = 0
 
         self.initial_wait = np.vectorize(self.select_value)(self.wait_time.select(1, '*'))
 
@@ -170,14 +169,10 @@ class GurobiIntersection:
         return var.x
 
     def get_colors(self, k=1):
-        return np.vectorize(self.select_value)(self.colors.select(k, '*', '*')).reshape(self.configuration.num_signals,
-                                                                                        self.num_colors)
+        return np.vectorize(self.select_value)(self.colors.select(k, '*', '*')).reshape(self.configuration.num_signals, self.num_colors)
 
     def initial_color_constraints(self, color, initial, timing):
-        return self.model.addConstrs(
-            (self.colors.sum(range(1, int(timing[s] - initial[s] + 1)), s, color) == timing[s] - initial[s]
-                for s in range(self.configuration.num_signals) if 0 < initial[s] < timing[s]),
-            'initial_{}'.format(color))
+        return self.model.addConstrs( (self.colors.sum(range(1, int(timing[s] - initial[s] + 1)), s, color) == timing[s] - initial[s] for s in self.num_signals if 0 < initial[s] < timing[s]), 'initial_{}'.format(color))
 
     def init(self, queue, arrival, departure):
         if self.initial_set:
@@ -189,36 +184,27 @@ class GurobiIntersection:
             self.model.remove(self.initial_green_constraints)
             self.model.remove(self.initial_amber_constraints)
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.arrival_constraints = self.model.addConstrs(
-            (self.arrival[k, s] == int(arrival[k - 1, s]) for s, k in compound_range), 'arrival')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.arrival_constraints = self.model.addConstrs((self.arrival[k, s] == int(arrival[k - 1, s]) for s, k in compound_range), 'arrival')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.departure_constraints = self.model.addConstrs(
-            (self.departure[k, s] == int(departure[k - 1, s]) for s, k in compound_range), 'departure')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.departure_constraints = self.model.addConstrs((self.departure[k, s] == int(departure[k - 1, s]) for s, k in compound_range), 'departure')
 
-        self.initial_wait_constraints = self.model.addConstrs(
-            (self.wait_time[0, s] == self.initial_wait[s] for s in range(self.configuration.num_signals)),
-            'initial_wait')
-        self.initial_queue_constraints = self.model.addConstrs(
-            (self.queue[0, s] == queue[s] for s in range(self.configuration.num_signals)), 'initial_queue')
+        self.initial_wait_constraints = self.model.addConstrs((self.wait_time[0, s] == self.initial_wait[s] for s in self.num_signals), 'initial_wait')
+        self.initial_queue_constraints = self.model.addConstrs((self.queue[0, s] == queue[s] for s in self.num_signals), 'initial_queue')
 
-        compound_range = itertools.product(range(self.configuration.num_signals), self.allcolors)
-        self.initial_light_constraints = self.model.addConstrs(
-            (self.colors[0, s, color] == self.initial_lights[s, self.color_to_idx[color]] for s, color in
-             compound_range), 'initial_lights')
+        compound_range = product(self.num_signals, self.allcolors)
+        self.initial_light_constraints = self.model.addConstrs((self.colors[0, s, color] == self.initial_lights[s, self.color_to_idx[color]] for s, color in compound_range), 'initial_lights')
 
         self.initial_green_constraints = self.initial_color_constraints('green', self.initial_green, self.configuration.min_green)
         self.initial_amber_constraints = self.initial_color_constraints('amber', self.initial_amber, self.configuration.amber_time)
 
-        compound_range = itertools.product(range(1, self.options.prediction_horizon + 1), range(self.configuration.num_signals), range(self.configuration.num_signals))
+        compound_range = product(self.prediction_horizon, self.num_signals, self.num_signals)
         for k, s1, s2 in compound_range:
             green_interval = self.configuration.green_interval[s2, s1]
 
             if green_interval > 0:
-                initial_notgreen = max(self.initial_notgreen[s2] - k + 1, 0)
+                initial_notgreen = max(self.initial_red[s2] - k + 1, 0)
                 self.green_interval_constraints[k, s1, s2].rhs = -initial_notgreen
 
         self.initial_set = True
@@ -227,13 +213,11 @@ class GurobiIntersection:
     # Create variables
     #####################
     def lane_step_var(self, name, inclusive=False, skip_first=False, vtype=GRB.CONTINUOUS, **kwargs):
-        compound_range = itertools.product(range(skip_first, self.options.prediction_horizon + inclusive),
-                                           range(self.configuration.num_signals))
+        compound_range = product(range(skip_first, self.options.prediction_horizon + inclusive), self.num_signals)
         return self.model.addVars(compound_range, name=name, lb=0, vtype=vtype, **kwargs)
 
     def color_var(self):
-        compound_range = itertools.product(range(self.options.prediction_horizon + 1),
-                                           range(self.configuration.num_signals), self.allcolors)
+        compound_range = product(range(self.options.prediction_horizon + 1), self.num_signals, self.allcolors)
         return self.model.addVars(compound_range, name='color', vtype=GRB.BINARY)
 
     #####################
@@ -243,123 +227,91 @@ class GurobiIntersection:
         queue_upper_bound = 10000
 
         # Flow
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs((self.potential_queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s] for s, k in compound_range),
-                              'flow1')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.potential_queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s] for s, k in compound_range), 'flow1')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.potential_flow[k, s] == gp.min_(self.potential_queue[k, s], self.departure[k, s]) for s, k in compound_range), 'flow2')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.potential_flow[k, s] == gp.min_(self.potential_queue[k, s], self.departure[k, s]) for s, k in compound_range), 'flow2')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.flow_departure_constraints = self.model.addConstrs((self.actual_flow[k, s] == self.potential_flow[k, s] * self.colors[k, s, 'green'] for s, k in compound_range), 'flow3')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.actual_flow[k, s] == self.potential_flow[k, s] * self.colors[k, s, 'green'] for s, k in compound_range), 'flow3')
 
         # Queue
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.actual_flow[k, s] for s, k in
-             compound_range), 'queue1')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.queue[k, s] == self.queue[k - 1, s] + self.arrival[k, s] - self.actual_flow[k, s] for s, k in compound_range), 'queue1')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
+        compound_range = product(self.num_signals, self.prediction_horizon)
         self.model.addConstrs((self.queue[k, s] >= self.queue_notempty[k, s] for s, k in compound_range), 'queue2')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.queue[k, s] <= queue_upper_bound * self.queue_notempty[k, s] for s, k in compound_range), 'queue3')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.queue[k, s] <= queue_upper_bound * self.queue_notempty[k, s] for s, k in compound_range), 'queue3')
 
     #####################
     # Objectives
     #####################
     def queue_objective(self):
-        return self.queue.sum(range(1, self.options.prediction_horizon + 1), '*')
+        return self.queue.sum()
 
     def stops_objective(self):
         stops_upper_bound = 10000
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.stops[k, s] <= stops_upper_bound * (1 - self.colors[k, s, 'green']) for s, k in compound_range),
-            'stops1')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.stops[k, s] <= stops_upper_bound * (1 - self.colors[k, s, 'green']) for s, k in compound_range), 'stops1')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
+        compound_range = product(self.num_signals, self.prediction_horizon)
         self.model.addConstrs((self.stops[k, s] <= self.arrival[k, s] for s, k in compound_range), 'stops2')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.stops[k, s] >= self.arrival[k, s] - stops_upper_bound * self.colors[k, s, 'green'] for s, k in
-             compound_range), 'stops3')
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.stops[k, s] >= self.arrival[k, s] - stops_upper_bound * self.colors[k, s, 'green'] for s, k in compound_range), 'stops3')
 
-        return self.stops.sum(range(1, self.options.prediction_horizon + 1), '*')
+        return self.stops.sum()
 
     def wait_time_objective(self):
-        return self.wait_time.sum(range(1, self.options.prediction_horizon + 1), '*')
+        return self.wait_time.sum()
 
     def green_objective(self):
-        return -self.colors.sum(range(1, self.options.prediction_horizon + 1), '*', 'green')
+        return -self.colors.sum('*', '*', 'green')
 
     def throughput_objective(self):
-        return -self.actual_flow.sum(range(1, self.options.prediction_horizon + 1), '*')
+        return -self.actual_flow.sum()
 
     #########################
     # General constraints
     #########################
     def single_light_constraints(self):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(self.options.prediction_horizon + 1))
+        compound_range = product(self.num_signals, self.prediction_horizon)
         self.model.addConstrs((self.colors.sum(k, s, '*') == 1 for s, k in compound_range), 'single')
 
     def nonblocking(self, k, s):
         return 1 - self.colors[k, s, 'red']
 
     def conflict_constraints(self):
-        compound_range = itertools.product(range(self.options.prediction_horizon + 1),
-                                           range(self.configuration.num_signals), range(self.configuration.num_signals))
-        self.model.addConstrs(
-            (self.configuration.conflict_matrix[s1, s2] * (self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1
-             for k, s1, s2 in compound_range), 'blocking')
+        compound_range = product(range(self.options.prediction_horizon + 1), self.num_signals, self.num_signals)
+        self.model.addConstrs((self.configuration.conflict_matrix[s1, s2] * (self.nonblocking(k, s1) + self.nonblocking(k, s2)) <= 1 for k, s1, s2 in compound_range), 'blocking')
 
     def green_transition_constraints(self):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
+        compound_range = product(self.num_signals, self.prediction_horizon)
         self.model.addConstrs((self.colors[k - 1, s, 'green'] + self.colors[k, s, 'amber'] <= 1 for s, k in compound_range), 'stable_green')
 
     def red_transition_constraints(self):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
+        compound_range = product(self.num_signals, self.prediction_horizon)
         self.model.addConstrs(((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'green']) * self.configuration.amber_time[s] <= 1 + self.configuration.amber_time[s] for s, k in compound_range), 'stable2_red')
 
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
+        compound_range = product(self.num_signals, self.prediction_horizon)
         self.model.addConstrs((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'amber'] * (1 - self.configuration.amber_time[s]) <= 1 for s, k in compound_range), 'stable3_red')
 
     def amber_transition_constraints(self):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(1, self.options.prediction_horizon + 1))
-        self.model.addConstrs(
-            (self.colors[k - 1, s, 'amber'] + self.colors[k, s, 'red'] <= 1 for s, k in compound_range),
-            'intermediate1_{}'.format('amber'))
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.colors[k - 1, s, 'amber'] + self.colors[k, s, 'red'] <= 1 for s, k in compound_range), 'intermediate1_{}'.format('amber'))
 
     def control_horizon_constraints(self):
-        compound_range = itertools.product(range(self.options.control_horizon + 1, self.options.prediction_horizon),
-                                           range(self.configuration.num_signals), self.allcolors)
-        self.model.addConstrs((self.colors[k, s, c] == self.colors[k + 1, s, c] for k, s, c in compound_range),
-                              'control_horizon')
+        if self.options.control_horizon != self.options.prediction_horizon:
+            compound_range = product(range(self.options.control_horizon + 1, self.options.prediction_horizon), self.num_signals, self.allcolors)
+            self.model.addConstrs((self.colors[k, s, c] == self.colors[k + 1, s, c] for k, s, c in compound_range), 'control_horizon')
 
     def maximum_wait(self):
-        compound_range = itertools.product(range(self.configuration.num_signals),
-                                           range(self.options.prediction_horizon))
-        self.model.addConstrs(
-            (self.wait_time[k, s] <= self.configuration.maximum_wait[s] - 1 for s, k in compound_range if
-             self.configuration.maximum_wait[s] > 0), 'maximum_wait')
+        compound_range = product(self.num_signals, range(self.options.prediction_horizon))
+        self.model.addConstrs((self.wait_time[k, s] <= self.configuration.maximum_wait[s] - 1 for s, k in compound_range if self.configuration.maximum_wait[s] > 0), 'maximum_wait')
 
     #########################################
     # Timer dynamics
@@ -373,69 +325,59 @@ class GurobiIntersection:
         self.model.addConstr(counter >= (prev_counter + 1) - upper_bound * reset)
 
     def wait_time_timer_dynamics(self):
-        for s in range(self.configuration.num_signals):
-            for k in range(1, self.options.prediction_horizon + 1):
-                self.model.addConstr(self.request[k, s] - (1 - self.colors[k, s, 'green']) <= 0,
-                                     'wait1_{}[{}]'.format(s, k))
-                self.model.addConstr(self.request[k, s] - self.queue_notempty[k, s] <= 0, 'wait2_{}[{}]'.format(s, k))
-                self.model.addConstr(
-                    -self.request[k, s] + (1 - self.colors[k, s, 'green']) + self.queue_notempty[k, s] <= 1,
-                    'wait3_{}[{}]'.format(s, k))
-                self.increment_counter(self.wait_time, k, s, self.request[k, s], 1 - self.request[k, s],
-                                       self.wait_time[0, s] + k)
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.request[k, s] - (1 - self.colors[k, s, 'green']) <= 0 for s, k in compound_range), 'wait1')
+
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((self.request[k, s] - self.queue_notempty[k, s] <= 0 for s, k in compound_range), 'wait2')
+
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        self.model.addConstrs((-self.request[k, s] + (1 - self.colors[k, s, 'green']) + self.queue_notempty[k, s] <= 1 for s, k in compound_range), 'wait3')
+
+        compound_range = product(self.num_signals, self.prediction_horizon)
+        for s, k in compound_range:
+            self.increment_counter(self.wait_time, k, s, self.request[k, s], 1 - self.request[k, s], self.wait_time[0, s] + k)
 
     #########################################
     # Timing constraints
     #########################################
     def min_green_constraints(self):
         # General case
-        for s in range(self.configuration.num_signals):
+        for s in self.num_signals:
             min_green = self.configuration.min_green[s]
             if min_green > 0:
                 for k in range(1, self.options.prediction_horizon + 1 - min_green):
                     green_diff = self.colors[k, s, 'green'] - self.colors[k - 1, s, 'green']
-                    self.model.addConstr(
-                        self.colors.sum(range(k, k + min_green), s, 'green') >= min_green *
-                        green_diff, 'min_green_{}[{}]'.format(s, k))
+                    self.model.addConstr(self.colors.sum(range(k, k + min_green), s, 'green') >= min_green * green_diff, 'min_green_{}[{}]'.format(s, k))
 
         # End range case
-        for s in range(self.configuration.num_signals):
+        for s in self.num_signals:
             min_green = self.configuration.min_green[s]
             if min_green > 0:
                 for k in range(self.options.prediction_horizon + 1 - min_green, self.options.prediction_horizon):
                     green_diff = self.colors[k, s, 'green'] - self.colors[k - 1, s, 'green']
-                    self.model.addConstr(
-                        self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'green') >= (
-                                self.options.prediction_horizon + 1 - k) * green_diff,
-                        'min_green_e_{}[{}]'.format(s, k))
+                    self.model.addConstr(self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'green') >= (self.options.prediction_horizon + 1 - k) * green_diff, 'min_green_e_{}[{}]'.format(s, k))
 
     def amber_time_constraints(self):
         # General case
-        for s in range(self.configuration.num_signals):
+        for s in self.num_signals:
             amber_time = self.configuration.amber_time[s]
             if amber_time > 0:
                 for k in range(1, self.options.prediction_horizon + 1 - amber_time):
                     amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
-                    self.model.addConstr(
-                        self.colors.sum(range(k, k + amber_time), s, 'amber') >= amber_time *
-                        amber_diff, 'amber1_{}[{}]'.format(s, k))
-                    self.model.addConstr(
-                        self.colors.sum(range(k, k + amber_time + 1), s, 'amber') <= amber_time,
-                        name='amber2_{}[{}]'.format(s, k))
+                    self.model.addConstr(self.colors.sum(range(k, k + amber_time), s, 'amber') >= amber_time * amber_diff, 'amber1_{}[{}]'.format(s, k))
+                    self.model.addConstr(self.colors.sum(range(k, k + amber_time + 1), s, 'amber') <= amber_time, 'amber2_{}[{}]'.format(s, k))
 
         # End range case
-        for s in range(self.configuration.num_signals):
+        for s in self.num_signals:
             amber_time = self.configuration.amber_time[s]
             if amber_time > 0:
                 for k in range(self.options.prediction_horizon + 1 - amber_time, self.options.prediction_horizon):
                     amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
-                    self.model.addConstr(
-                        self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'amber') >= (
-                                self.options.prediction_horizon + 1 - k) * amber_diff,
-                        'amber_e_{}[{}]'.format(s, k))
+                    self.model.addConstr(self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'amber') >= (self.options.prediction_horizon + 1 - k) * amber_diff, 'amber_e_{}[{}]'.format(s, k))
 
     def green_interval(self):
-        compound_range = itertools.product(range(1, self.options.prediction_horizon + 1), range(self.configuration.num_signals), range(self.configuration.num_signals))
+        compound_range = product(self.prediction_horizon, self.num_signals, self.num_signals)
 
         def constraint(k, s1, s2):
             green_interval = self.configuration.green_interval[s2, s1]
