@@ -3,7 +3,7 @@
     "num_signals": 8,
     "traffic_junction_id": "gneJ29", 
     "start_light_state":{
-        "green":[0, 0, 0, 0, 0, 0, 0, 0],
+        "green": [0, 0, 0, 0, 0, 0, 0, 0],
         "yellow": [0, 0, 0, 0, 0, 0, 0, 0],
         "red": [1, 1, 1, 1, 1, 1, 1, 1],
         "amber": [0, 0, 0, 0, 0, 0, 0, 0]

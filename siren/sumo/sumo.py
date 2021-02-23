@@ -7,7 +7,7 @@ import numpy as np
 
 class SUMOSimulation:
     COLOR_TO_INDEX = {'r': 1, 'y': 2, 'g': 0, 'G': 0, 's': 2, 'u': 3}
-    INDEX_TO_COLOR = ['g', 'r', 'y', 'u']
+    INDEX_TO_COLOR = ['g', 'r', 'u', 'y']
 
     def __init__(self, configuration, options):
         self.simulation_step = 0
