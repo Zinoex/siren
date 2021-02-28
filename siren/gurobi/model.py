@@ -283,7 +283,10 @@ class GurobiIntersection:
     # Objectives
     #####################
     def queue_objective(self):
-        return self.queue.sum()
+        compound_range = product(self.prediction_horizon, self.num_signals)
+        discount = {(k, s): 0.97 ** k for k, s in compound_range}
+
+        return self.queue.prod(discount)
 
     def stops_objective(self):
         stops_upper_bound = 10000
@@ -316,7 +319,7 @@ class GurobiIntersection:
 
     def throughput_objective(self):
         compound_range = product(self.prediction_horizon, self.num_signals)
-        discount = {(k, s, 'green'): 0.97 ** k for k, s in compound_range}
+        discount = {(k, s): 0.97 ** k for k, s in compound_range}
 
         return -self.actual_flow.prod(discount)
 
