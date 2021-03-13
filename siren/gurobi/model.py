@@ -111,6 +111,7 @@ class GurobiIntersection:
         # Add timing constraints
         self.min_green_constraints()
         self.amber_time_constraints()
+        self.min_red_constraints()
 
         # Set object function
         queue_objective = self.queue_objective()
@@ -154,25 +155,20 @@ class GurobiIntersection:
 
         self.initial_lights = self.get_colors()
 
-        for s in self.num_signals:
-            if self.initial_lights[s, self.GREEN] > 0.9:
-                self.initial_green[s] += 1
-            else:
-                self.initial_green[s] = 0
+        self.increment_initial_timers(self.initial_green, self.GREEN)
+        self.increment_initial_timers(self.initial_amber, self.AMBER)
+        self.increment_initial_timers(self.initial_red, self.RED)
 
-            if self.initial_lights[s, self.AMBER] > 0.9:
-                self.initial_amber[s] += 1
-            else:
-                self.initial_amber[s] = 0
-
-            if self.initial_lights[s, self.RED] > 0.9:
-                self.initial_red[s] += 1
-            else:
-                self.initial_red[s] = 0
-
-        self.initial_wait = np.vectorize(self.select_value)(self.wait_time.select(1, '*'))
+        self.initial_wait = np.vectorize(self.select_int)(self.wait_time.select(1, '*'))
 
         return self.get_colors_with_yellow()
+
+    def increment_initial_timers(self, initial, color):
+        for s in self.num_signals:
+            if self.initial_lights[s, color] == 1:
+                initial[s] += 1
+            else:
+                initial[s] = 0
 
     def iis(self, queue, arrival, departure, file='model'):
         self.init(queue, arrival, departure)
@@ -191,8 +187,12 @@ class GurobiIntersection:
     def select_value(var):
         return var.x
 
+    @staticmethod
+    def select_int(var):
+        return int(var.x)
+
     def get_colors(self, k=1):
-        return np.vectorize(self.select_value)(self.colors.select(k, '*', '*')).reshape(self.configuration.num_signals, self.num_colors)
+        return np.vectorize(self.select_int)(self.colors.select(k, '*', '*')).reshape(self.configuration.num_signals, self.num_colors)
 
     def get_colors_with_yellow(self, k=1):
         colors = self.get_colors(k)
@@ -212,6 +212,7 @@ class GurobiIntersection:
         if self.initial_set:
             self.model.remove(self.initial_green_constraints)
             self.model.remove(self.initial_amber_constraints)
+            self.model.remove(self.initial_red_constraints)
 
         for s, k in product(self.num_signals, self.prediction_horizon):
             self.arrival_constraints1[s, k].rhs = int(arrival[k - 1, s])
@@ -229,6 +230,7 @@ class GurobiIntersection:
 
         self.initial_green_constraints = self.initial_color_constraints('green', self.initial_green, self.configuration.min_green)
         self.initial_amber_constraints = self.initial_color_constraints('amber', self.initial_amber, self.configuration.amber_time)
+        self.initial_red_constraints = self.initial_color_constraints('red', self.initial_red, self.configuration.yellow_time + 1)
 
         for k, s1, s2 in product(self.prediction_horizon, self.num_signals, self.num_signals):
             if self.configuration.green_interval[s2, s1] > 0:
@@ -421,6 +423,38 @@ class GurobiIntersection:
                    (self.options.prediction_horizon + 1 - k) * green_diff
 
         self.model.addConstrs((constraint(s, k) for s, k in generator()), 'min_green_e')
+
+    def min_red_constraints(self):
+        # General case
+        def generator():
+            for s in self.num_signals:
+                min_red = self.configuration.yellow_time[s] + 1
+                if min_red > 0:
+                    for k in range(1, self.options.prediction_horizon + 1 - min_red):
+                        yield s, k
+
+        def constraint(s, k):
+            min_red = self.configuration.yellow_time[s] + 1
+            red_diff = self.colors[k, s, 'red'] - self.colors[k - 1, s, 'red']
+            return self.colors.sum(range(k, k + min_red), s, 'red') >= min_red * red_diff
+
+        self.model.addConstrs((constraint(s, k) for s, k in generator()), 'min_red')
+
+        # End range case
+        def generator():
+            for s in self.num_signals:
+                min_red = self.configuration.yellow_time[s] + 1
+                if min_red > 0:
+                    for k in range(self.options.prediction_horizon + 1 - min_red, self.options.prediction_horizon):
+                        yield s, k
+
+        def constraint(s, k):
+            red_diff = self.colors[k, s, 'red'] - self.colors[k - 1, s, 'red']
+
+            return self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'red') >= \
+                   (self.options.prediction_horizon + 1 - k) * red_diff
+
+        self.model.addConstrs((constraint(s, k) for s, k in generator()), 'min_red_e')
 
     def amber_time_constraints(self):
         # General case
