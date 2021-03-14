@@ -11,6 +11,8 @@ from sumo.sumo import SUMOSimulation
 
 class Runner:
     def __init__(self, args):
+        args.folder_prefix = args.folder_prefix.format(p=args.prediction_horizon, c=args.control_horizon)
+
         os.makedirs('data/{}/'.format(args.folder_prefix), exist_ok=True)
 
         self.configuration_loader = ConfigurationLoader(args.name)
