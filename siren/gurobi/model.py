@@ -345,10 +345,7 @@ class GurobiIntersection:
 
     def red_transition_constraints(self):
         compound_range = product(self.num_signals, self.prediction_horizon)
-        self.model.addConstrs(((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'green']) * self.configuration.amber_time[s] <= 1 + self.configuration.amber_time[s] for s, k in compound_range), 'stable2_red')
-
-        compound_range = product(self.num_signals, self.prediction_horizon)
-        self.model.addConstrs((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'amber'] * (1 - self.configuration.amber_time[s]) <= 1 for s, k in compound_range), 'stable3_red')
+        self.model.addConstrs((self.colors[k - 1, s, 'red'] + self.colors[k, s, 'amber' if self.configuration.amber_time[s] == 0 else 'green'] <= 1 for s, k in compound_range), 'stable_red')
 
     def amber_transition_constraints(self):
         compound_range = product(self.num_signals, self.prediction_horizon)
