@@ -352,9 +352,8 @@ class GurobiIntersection:
         self.model.addConstrs((self.colors[k - 1, s, 'amber'] + self.colors[k, s, 'red'] <= 1 for s, k in compound_range), 'intermediate1_{}'.format('amber'))
 
     def control_horizon_constraints(self):
-        if self.options.control_horizon != self.options.prediction_horizon:
-            compound_range = product(range(self.options.control_horizon + 1, self.options.prediction_horizon), self.num_signals, self.allcolors)
-            self.model.addConstrs((self.colors[k, s, c] == self.colors[k + 1, s, c] for k, s, c in compound_range), 'control_horizon')
+        compound_range = product(range(self.options.control_horizon + 1, self.options.prediction_horizon), self.num_signals, self.allcolors)
+        self.model.addConstrs((self.colors[k, s, c] == self.colors[k + 1, s, c] for k, s, c in compound_range), 'control_horizon')
 
     def maximum_wait(self):
         compound_range = product(self.num_signals, range(self.options.prediction_horizon))
