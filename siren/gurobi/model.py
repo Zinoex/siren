@@ -392,10 +392,8 @@ class GurobiIntersection:
         # General case
         def generator():
             for s in self.num_signals:
-                min_green = self.configuration.min_green[s]
-                if min_green > 0:
-                    for k in range(1, self.options.prediction_horizon + 1 - min_green):
-                        yield s, k
+                for k in range(1, self.options.prediction_horizon + 1 - self.configuration.min_green[s]):
+                    yield s, k
 
         def constraint(s, k):
             min_green = self.configuration.min_green[s]
@@ -407,10 +405,8 @@ class GurobiIntersection:
         # End range case
         def generator():
             for s in self.num_signals:
-                min_green = self.configuration.min_green[s]
-                if min_green > 0:
-                    for k in range(self.options.prediction_horizon + 1 - min_green, self.options.prediction_horizon):
-                        yield s, k
+                for k in range(self.options.prediction_horizon + 1 - self.configuration.min_green[s], self.options.prediction_horizon):
+                    yield s, k
 
         def constraint(s, k):
             green_diff = self.colors[k, s, 'green'] - self.colors[k - 1, s, 'green']
