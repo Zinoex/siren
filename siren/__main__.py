@@ -142,7 +142,6 @@ def batch(args):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Test siren performance.')
-    parser.add_argument('--timed', action='store_true', help='Run sumo simulation with timed control.')
     parser.add_argument('--queue-weight', type=float, default=1, help='Set queue weight.')
     parser.add_argument('--stops-weight', type=float, default=6, help='Set stops weight.')
     parser.add_argument('--wait-weight', type=float, default=0.05, help='Set wait weight (should be small).')
@@ -164,6 +163,7 @@ def parse_arguments():
     sumo_parser = commands.add_parser("sumo", help='Run sumo simulation with the timed or siren controller.')
     sumo_parser.add_argument('-p', '--prediction-horizon', type=positive_type, default=30, help='Set prediction horizon.')
     sumo_parser.add_argument('-c', '--control-horizon', type=positive_type, default=20, help='Set control horizon')
+    sumo_parser.add_argument('--timed', action='store_true', help='Run sumo simulation with timed control.')
     sumo_parser.add_argument('--nogui', action='store_true', help='Run the commandline version of sumo.')
     sumo_parser.add_argument('--no-delay', action='store_true', help='Run sumo simulation without real-time delay.')
     sumo_parser.set_defaults(func=sumo)
@@ -177,6 +177,7 @@ def parse_arguments():
     batch_parser = commands.add_parser("batch", help='Run batches of sumo simulations with the timed or siren controller.')
     batch_parser.add_argument('-p', '--prediction-horizon', type=range_or_int, default=30, help='Set prediction horizon.')
     batch_parser.add_argument('-c', '--control-horizon', type=range_or_int, default=20, help='Set control horizon')
+    batch_parser.add_argument('--timed', action='store_true', help='Run sumo simulation with timed control.')
     batch_parser.set_defaults(func=batch, no_gui=True, no_delay=True)
 
     return parser, parser.parse_args()
