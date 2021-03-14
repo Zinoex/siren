@@ -135,11 +135,12 @@ def batch(args):
     control_horizon = expand_range(control_horizon, length)
 
     for p, c in zip(prediction_horizon, control_horizon):
-        args.prediction_horizon = p
-        args.control_horizon = c
+        args_copy = argparse.Namespace(**vars(args))
+        args_copy.prediction_horizon = p
+        args_copy.control_horizon = c
 
         print('Running simulation for prediction horizion = {}, control horizon = {}'.format(p, c))
-        runner = TimedRunner(args) if args.timed else MPCRunner(args)
+        runner = TimedRunner(args_copy) if args_copy.timed else MPCRunner(args_copy)
         runner.run()
 
 
