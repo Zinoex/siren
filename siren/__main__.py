@@ -1,6 +1,7 @@
 import argparse
 import re
 import timeit
+from typing import Tuple
 
 import numpy as np
 
@@ -17,9 +18,9 @@ def positive_type(x):
     return x
 
 
-def alphanum_only(x):
+def folder_prefix(x):
     x = str(x)
-    if not re.match('^[a-z0-9_]+$', x):
+    if not re.match('^[{}a-z0-9_]+$', x):
         raise argparse.ArgumentTypeError('Parameter must be alphanumeric and underscores only.')
     return x
 
@@ -53,22 +54,23 @@ def range_or_int(x):
 
 
 def prediction_control_validity_check(parser: argparse.ArgumentParser, args):
-    if isinstance(args.prediction_horizon, (int, int)) and isinstance(args.control_horizon, (int, int)):
+    if isinstance(args.prediction_horizon, tuple) and isinstance(args.control_horizon, tuple):
         pstart, pend = args.prediction_horizon
         cstart, cend = args.control_horizon
         if pstart != cstart or pend != cend:
             parser.error('Ranges for prediction horizon and control horizon do not match')
-    elif isinstance(args.prediction_horizon, (int, int)) and isinstance(args.control_horizon, int):
+    elif isinstance(args.prediction_horizon, tuple) and isinstance(args.control_horizon, int):
         pstart, pend = args.prediction_horizon
         if pstart < args.control_horizon:
-            parser.error('Prediction horizon must be greater than or equal to the control horizon')
-    elif isinstance(args.prediction_horizon, int) and isinstance(args.control_horizon, (int, int)):
+            parser.error('All prediction horizons must be greater than or equal to the control horizon')
+    elif isinstance(args.prediction_horizon, int) and isinstance(args.control_horizon, tuple):
         cstart, cend = args.control_horizon
-        if cend > args.prediction_horizon:
-            parser.error('Prediction horizon must be greater than or equal to the control horizon')
+        # Subtract one to account for the exclusive upper bound of range
+        if cend - 1 > args.prediction_horizon:
+            parser.error('The prediction horizon must be greater than or equal to all control horizons')
     else:
         if args.control_horizon > args.prediction_horizon:
-            parser.error('Prediction horizon must be greater than or equal to the control horizon')
+            parser.error('The prediction horizon must be greater than or equal to the control horizon')
 
 
 def benchmarking(args):
@@ -108,7 +110,7 @@ def sumo(args):
 
 
 def range_or_int_length(x):
-    if isinstance(x, (int, int)):
+    if isinstance(x, tuple):
         start, end = x
         return end - start
     else:
@@ -116,7 +118,7 @@ def range_or_int_length(x):
 
 
 def expand_range(x, length):
-    if isinstance(x, (int, int)):
+    if isinstance(x, tuple):
         start, end = x
         return range(start, end)
     else:
@@ -136,6 +138,7 @@ def batch(args):
         args.prediction_horizon = p
         args.control_horizon = c
 
+        print('Running simulation for prediction horizion = {}, control horizon = {}'.format(p, c))
         runner = TimedRunner(args) if args.timed else MPCRunner(args)
         runner.run()
 
@@ -151,10 +154,10 @@ def parse_arguments():
 
     parser.add_argument('-v', '--verbose', action='store_true', help='Print variables after execution.')
     parser.add_argument('-i', '--iterations', type=positive_type, default=1, help='Number of iterations to test over.')
-    parser.add_argument('-f', '--folder-prefix', type=alphanum_only, default='experiment', help='Folder prefix for experiments.')
+    parser.add_argument('-f', '--folder-prefix', type=folder_prefix, default='experiment', help='Folder prefix for experiments.')
     parser.add_argument('-n', '--name', type=str, default='aarhus_intersection/osm', help='Intersetion to simulate.')
 
-    commands = parser.add_subparsers(help='commands')
+    commands = parser.add_subparsers(help='commands', dest='command')
 
     iis_parser = commands.add_parser("iis", help='Compute irreducible inconsistent system (gurobi only, no sumo). Requires that model is infeasible.')
     iis_parser.add_argument('-p', '--prediction-horizon', type=positive_type, default=30, help='Set prediction horizon.')
@@ -177,7 +180,7 @@ def parse_arguments():
     batch_parser = commands.add_parser("batch", help='Run batches of sumo simulations with the timed or siren controller.')
     batch_parser.add_argument('-p', '--prediction-horizon', type=range_or_int, default=30, help='Set prediction horizon.')
     batch_parser.add_argument('-c', '--control-horizon', type=range_or_int, default=20, help='Set control horizon')
-    batch_parser.set_defaults(func=batch, no_gui=True, no_delay=True)
+    batch_parser.set_defaults(func=batch, nogui=True, no_delay=True)
 
     return parser, parser.parse_args()
 
