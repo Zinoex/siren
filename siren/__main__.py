@@ -125,22 +125,26 @@ def expand_range(x, length):
 
 
 def batch(args):
-    prediction_horizon = args.prediction_horizon
-    control_horizon = args.control_horizon
-
-    length = max(range_or_int_length(prediction_horizon), range_or_int_length(control_horizon))
-
-    prediction_horizon = expand_range(prediction_horizon, length)
-    control_horizon = expand_range(control_horizon, length)
-
-    for p, c in zip(prediction_horizon, control_horizon):
-        args_copy = argparse.Namespace(**vars(args))
-        args_copy.prediction_horizon = p
-        args_copy.control_horizon = c
-
-        print('Running simulation for prediction horizion = {}, control horizon = {}'.format(p, c))
-        runner = TimedRunner(args_copy) if args_copy.timed else MPCRunner(args_copy)
+    if args.timed:
+        runner = TimedRunner(args)
         runner.run()
+    else:
+        prediction_horizon = args.prediction_horizon
+        control_horizon = args.control_horizon
+
+        length = max(range_or_int_length(prediction_horizon), range_or_int_length(control_horizon))
+
+        prediction_horizon = expand_range(prediction_horizon, length)
+        control_horizon = expand_range(control_horizon, length)
+
+        for p, c in zip(prediction_horizon, control_horizon):
+            args_copy = argparse.Namespace(**vars(args))
+            args_copy.prediction_horizon = p
+            args_copy.control_horizon = c
+
+            print('Running simulation for prediction horizion = {}, control horizon = {}'.format(p, c))
+            runner = MPCRunner(args_copy)
+            runner.run()
 
 
 def parse_arguments():
