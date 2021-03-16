@@ -29,7 +29,7 @@ class TimedRunner(Runner):
 
     def run(self):
         print('Sumo Object created')
-        self.sim.start()
+        self.sim.start(clear=False)
 
         sim_continue_flag = self.sim.step()
 
