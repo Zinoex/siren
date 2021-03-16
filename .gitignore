@@ -139,3 +139,4 @@ dmypy.json
 
 # Experiments
 siren/data
+siren/analysis/*.pdf
