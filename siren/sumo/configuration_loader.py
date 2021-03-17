@@ -26,6 +26,7 @@ class ConfigurationLoader:
             yellow_time=np.array(desc_data['time_vectors']['yellow']),
             amber_time=np.array(desc_data['time_vectors']['amber']),
             min_green=np.array(desc_data['time_vectors']['min_green']),
+            red_clearance=np.array(desc_data['time_vectors']['red_clearance']),
             maximum_wait=np.array(desc_data['maximum_wait'])
         )
 
@@ -34,5 +35,6 @@ class ConfigurationLoader:
             tls_id=desc_data['traffic_junction_id'],
             num_signals=self.num_signals,
             lane_mapping=desc_data['SUMO_lane_mapping'],
+            non_protection={int(key): value for key, value in desc_data['non_protection'].items()},
             crossings=desc_data.get('crossings', [])
         )

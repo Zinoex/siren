@@ -2,7 +2,7 @@
     "intersection_name": "Standard 4-way",
     "num_signals": 4,
     "traffic_junction_id": "0",
-    "start_light_state":{
+    "start_light_state": {
         "green":[0, 0, 0, 0],
         "yellow": [0, 0, 0, 0],
         "red": [1, 1, 1, 1],
@@ -11,7 +11,8 @@
     "time_vectors": {
         "yellow": [4, 4, 4, 4],
         "amber": [0, 0, 0, 0],
-        "min_green": [6, 6, 6, 6]
+        "min_green": [6, 6, 6, 6],
+        "red_clearance": [2, 2, 2, 2]
     }, 
     "green_interval_matrix": [
         [0, 6, 0, 6],
@@ -25,6 +26,7 @@
         [0, 1, 0, 1],
         [1, 0, 1, 0]
     ],
+    "non_protection": { },
     "maximum_wait": [300, 300, 300, 300],
     "departure_rate": [1, 1, 1, 1],
     "SUMO_lane_mapping": [0, 1, 2, 3]

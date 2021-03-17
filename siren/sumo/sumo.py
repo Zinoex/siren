@@ -96,6 +96,11 @@ class SUMOSimulation:
                 if sig_idx == i:
                     output_light_list[j] = self.INDEX_TO_COLOR[color_idx]
 
+        for i in range(len(self.configuration.lane_mapping)):
+            non_protection = self.configuration.non_protection.get(i, [])
+            if output_light_list[i] == 'g' and all([output_light_list[j] in ['r', 'y'] for j in non_protection]):
+                output_light_list[i] = 'G'
+
         traci.trafficlight.setRedYellowGreenState(self.configuration.tls_id, ''.join(output_light_list))
 
     @property
