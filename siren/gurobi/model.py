@@ -64,7 +64,8 @@ class GurobiIntersection:
         self.initial_light_constraints = None
         self.initial_red_constraints = None
         self.initial_green_constraints = None
-        self.initial_amber_constraints = None
+        # self.initial_amber_constraints = None
+        self.amber_constraints = None
 
         # Create variables
         self.colors = self.color_var()
@@ -163,7 +164,7 @@ class GurobiIntersection:
     def increment_initial_timers(self, initial, color, cap):
         for s in self.num_signals:
             if self.initial_lights[s, color] == 1:
-                initial[s] = min(initial[s] + 1, cap[s])
+                initial[s] = initial[s] + 1  # min(initial[s] + 1, cap[s])
             else:
                 initial[s] = 0
 
@@ -208,15 +209,20 @@ class GurobiIntersection:
     def init(self, queue, arrival, departure):
         if self.initial_set:
             self.model.remove(self.initial_green_constraints)
-            self.model.remove(self.initial_amber_constraints)
+            # self.model.remove(self.initial_amber_constraints)
             self.model.remove(self.initial_red_constraints)
             self.model.remove(self.departure_constraints)
 
+        for s, k in product(filter(lambda s: self.configuration.amber_time[s] > 0, self.num_signals), self.prediction_horizon):
+            amber_time = self.configuration.amber_time[s]
+            self.amber_constraints[s, k].rhs = min(max(0, amber_time - k + 1), self.initial_amber[s])
+
         for s, k in product(self.num_signals, self.prediction_horizon):
-            self.arrival_constraints1[s, k].rhs = int(arrival[k - 1, s])
-            self.arrival_constraints2[s, k].rhs = int(arrival[k - 1, s])
-            self.arrival_constraints3[s, k].rhs = int(arrival[k - 1, s])
-            self.arrival_constraints4[s, k].rhs = int(arrival[k - 1, s])
+            rhs = int(arrival[k - 1, s])
+            self.arrival_constraints1[s, k].rhs = rhs
+            self.arrival_constraints2[s, k].rhs = rhs
+            self.arrival_constraints3[s, k].rhs = rhs
+            self.arrival_constraints4[s, k].rhs = rhs
 
         compound_range = product(self.num_signals, self.prediction_horizon)
         self.departure_constraints = self.model.addConstrs((self.actual_flow[k, s] <= int(departure[k - 1, s]) * self.colors[k, s, 'green'] for s, k in compound_range), 'flow2')
@@ -229,7 +235,7 @@ class GurobiIntersection:
             self.initial_light_constraints[s, c].rhs = self.initial_lights[s, self.color_to_idx[c]]
 
         self.initial_green_constraints = self.initial_color_constraints('green', self.initial_green, self.configuration.min_green)
-        self.initial_amber_constraints = self.initial_color_constraints('amber', self.initial_amber, self.configuration.amber_time)
+        # self.initial_amber_constraints = self.initial_color_constraints('amber', self.initial_amber, self.configuration.amber_time)
         self.initial_red_constraints = self.initial_color_constraints('red', self.initial_red_min, self.configuration.yellow_time + self.configuration.red_clearance)
 
         for k, s1, s2 in product(self.prediction_horizon, self.num_signals, self.num_signals):
@@ -433,40 +439,61 @@ class GurobiIntersection:
         self.model.addConstrs((constraint(s, k) for s, k in generator()), 'min_red_e')
 
     def amber_time_constraints(self):
+        # # General case
+        # def generator():
+        #     for s in self.num_signals:
+        #         amber_time = self.configuration.amber_time[s]
+        #         if amber_time > 0:
+        #             for k in range(1, self.options.prediction_horizon + 1 - amber_time):
+        #                 yield s, k
+        #
+        # def constraint(s, k):
+        #     amber_time = self.configuration.amber_time[s]
+        #     amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
+        #     return self.colors.sum(range(k, k + amber_time), s, 'amber') >= amber_time * amber_diff
+        #
+        # self.model.addConstrs((constraint(s, k) for s, k in generator()), 'amber1')
+        #
+        # def constraint(s, k):
+        #     amber_time = self.configuration.amber_time[s]
+        #     return self.colors.sum(range(k, k + amber_time + 1), s, 'amber') <= amber_time
+        #
+        # self.model.addConstrs((constraint(s, k) for s, k in generator()), 'amber2')
+        #
+        # # End range case
+        # def generator():
+        #     for s in self.num_signals:
+        #         amber_time = self.configuration.amber_time[s]
+        #         if amber_time > 0:
+        #             for k in range(self.options.prediction_horizon + 1 - amber_time, self.options.prediction_horizon):
+        #                 yield s, k
+        #
+        # def constraint(s, k):
+        #     amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
+        #     return self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'amber') >= (self.options.prediction_horizon + 1 - k) * amber_diff
+        #
+        # self.model.addConstrs((constraint(s, k) for s, k in generator()), 'amber_e')
+
         # General case
-        def generator():
-            for s in self.num_signals:
-                amber_time = self.configuration.amber_time[s]
-                if amber_time > 0:
-                    for k in range(1, self.options.prediction_horizon + 1 - amber_time):
-                        yield s, k
 
         def constraint(s, k):
             amber_time = self.configuration.amber_time[s]
             amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
-            return self.colors.sum(range(k, k + amber_time), s, 'amber') >= amber_time * amber_diff
 
-        self.model.addConstrs((constraint(s, k) for s, k in generator()), 'amber1')
+            lf_ra = min(amber_time - 1, self.configuration.prediction_horizon - k) + 1
+            return self.colors.sum(range(k, k + lf_ra), s, 'amber') >= amber_diff * lf_ra
+
+        compound_range = product(filter(lambda s: self.configuration.amber_time[s] > 0, self.num_signals), self.prediction_horizon)
+        self.model.addConstrs((constraint(s, k) for s, k in compound_range), 'amber1')
 
         def constraint(s, k):
             amber_time = self.configuration.amber_time[s]
-            return self.colors.sum(range(k, k + amber_time + 1), s, 'amber') <= amber_time
+            lb_ra = min(k, amber_time) - 1
 
-        self.model.addConstrs((constraint(s, k) for s, k in generator()), 'amber2')
+            return self.colors[k, s, 'amber'] * amber_time - self.colors.sum(range(k - lb_ra, k + 1), s, 'amber') >= 0
 
-        # End range case
-        def generator():
-            for s in self.num_signals:
-                amber_time = self.configuration.amber_time[s]
-                if amber_time > 0:
-                    for k in range(self.options.prediction_horizon + 1 - amber_time, self.options.prediction_horizon):
-                        yield s, k
-
-        def constraint(s, k):
-            amber_diff = self.colors[k, s, 'amber'] - self.colors[k - 1, s, 'amber']
-            return self.colors.sum(range(k, self.options.prediction_horizon + 1), s, 'amber') >= (self.options.prediction_horizon + 1 - k) * amber_diff
-
-        self.model.addConstrs((constraint(s, k) for s, k in generator()), 'amber_e')
+        compound_range = product(filter(lambda s: self.configuration.amber_time[s] > 0, self.num_signals), self.prediction_horizon)
+        self.amber_constraints = self.model.addConstrs((constraint(s, k) for s, k in compound_range), 'amber2')
 
     def green_interval(self):
         compound_range = product(self.prediction_horizon, self.num_signals, self.num_signals)
